@@ -14,10 +14,12 @@ from skimage.feature import local_binary_pattern
 from skimage.exposure import adjust_gamma, adjust_log
 from skimage.exposure import rescale_intensity
 from skimage.filter import gaussian_filter
+import os
+import yaml
 
+config = yaml.load(open(os.environ["FDCONFIG"]))
 
 size = (200,200)
-con_str = "host=127.0.0.1 dbname=tinder_development user=tinder password=tinder_pw port=55432"
 class Face:
     def __init__(self,**kwargs):
         for key in kwargs:
@@ -28,7 +30,7 @@ class Face:
         self.eye_right -= self.origin
         return m[self.bound[0][1]:self.bound[1][1],self.bound[0][0]:self.bound[1][0]]
     def imread(self):
-        m = cv2.imread("/home/lee/proj/tinder-gather/gather-images/"+self.image_id+".jpg")
+        m = cv2.imread(os.path.join(config["images"],self.image_id+".jpg"))
         m = self.crop_face(m)
         return m
     def fit_eyes(self):
@@ -59,14 +61,14 @@ class AvgFace:
     def __init__(self):
        self.__avg_eyes()
     def __avg_eyes(self):
-        with psycopg2.connect(con_str) as conn:
+        with psycopg2.connect(**config["database"]) as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
                 query = """
                         (SELECT *,0 as class FROM detection_eyes
                         JOIN \"People\" AS p ON p._id = person_id
                         WHERE component = 6 AND 
-                        --p.origin_lat = -19.916667 AND p.origin_long = -43.933333 --brazil
-                        p.origin_lat = 20.659699 AND p.origin_long = -103.349609 --guadalajara
+                        p.origin_lat = -19.916667 AND p.origin_long = -43.933333 --brazil
+                        --p.origin_lat = 20.659699 AND p.origin_long = -103.349609 --guadalajara
                         ORDER BY score DESC LIMIT 500)
                         UNION
 
@@ -155,7 +157,7 @@ def xvalid(Classifier,X,y):
         print("Accuracy: {}".format(acc))
     print("Mean accuracy: {}".format(np.mean(accs)))
 
-pr = (10,90)
+pr = (15,85)
 def preproc(face):
     def contrast_stretching(face):
         p2, p98 = np.percentile(face, pr)
@@ -164,13 +166,6 @@ def preproc(face):
 
     def dog_filter(face,s1=1,s2=2):
         return gaussian_filter(face,s1) - gaussian_filter(face,s2)
-    def contrast_eq(face,a=0.1,t=200):
-        thresholded = face
-        thresholded[np.abs(face) > t] = t
-        c = np.mean(np.power(thresholded,a))
-        c = c**(1/a)
-        thresholded =  thresholded / c
-        return thresholded
 
     face = contrast_stretching(face)
     #g = adjust_log(rgb2gray(face),gain=2)
