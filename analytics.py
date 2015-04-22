@@ -12,6 +12,8 @@ import argparse
 import yaml
 import threading
 import multiprocessing
+import time
+import joblib
 
 
 
@@ -73,16 +75,28 @@ class MyClassifier:
         X_lda = self.lda.transform(X_pca)
         return self.clf.predict(X_lda)
 
-
-class Experiment(multiprocessing.Process):
+class Experiment:#(multiprocessing.Process):
     def __init__(self,exconf):
-        multiprocessing.Process.__init__(self)
+        #multiprocessing.Process.__init__(self)
         self.exconf = exconf
 
     def run(self):
         print("Fitting eyes")
+        start_time = time.time()
+
         self.af = AvgFace(self.exconf)
+
+        end_time = time.time()
+        print("AvgFace done in {:2f}s".format(end_time - start_time))
+
+
+
+        start_time = time.time()
         self.X = np.array([np.ravel(face.fit_eyes()) for face in self.af.faces])
+        end_time = time.time()
+
+        print("Fit eyes done in {:2f}s".format(end_time - start_time))
+
         print("End fit eyes")
         self.y = np.array([int(face.c)+1 for face in self.af.faces])
         assert len(np.unique(self.y)) >= 2
@@ -99,37 +113,37 @@ class Experiment(multiprocessing.Process):
         y = self.y
 
         skf = StratifiedShuffleSplit(y, xvconf["k"], test_size=xvconf["test_size"],random_state=0)
-        datas = [(Classifier,X[train_index],X[test_index],y[train_index],y[test_index]) for train_index,test_index in skf]
-        r = p.map(single_run,datas)
-        return r
+        #datas = [(Classifier,X[train_index],X[test_index],y[train_index],y[test_index]) for train_index,test_index in skf]
+        #r = p.map(single_run,datas)
+        #return r
 
-        #for train_index,test_index in skf:
-            #clf = Classifier()
+        for train_index,test_index in skf:
+            clf = Classifier()
 
-            #X_train, X_test = X[train_index], X[test_index]
-            #y_train, y_test = y[train_index], y[test_index]
-            #clf.fit(X_train,y_train)
-            #pred = clf.predict(X_test)
-            #acc = float(sum(pred == y[test_index]))/len(pred)
-            #yield acc
+            X_train, X_test = X[train_index], X[test_index]
+            y_train, y_test = y[train_index], y[test_index]
+            clf.fit(X_train,y_train)
+            pred = clf.predict(X_test)
+            acc = float(sum(pred == y[test_index]))/len(pred)
+            yield acc
 
-#@profile
+from Queue import Queue
 def main():
     parser = argparse.ArgumentParser(description="Analysis")
     parser.add_argument("--config",type=str,metavar="EXCONF",required=True,help="YAML configuration")
     args = parser.parse_args()
     conf = yaml.load(open(args.config))
     exs = []
-    queue = multiprocessing.Queue()
+    queue = Queue()
     for i,exconf in enumerate(conf["exs"]):
         ex = Experiment(exconf)
         ex.i = i
         ex.queue = queue
         exs.append(ex)
-        ex.start()
+        ex.run()
 
     for ex in exs:
-        ex.join()
+        #ex.join()
         accs = queue.get()
         print(accs)
         print(np.mean(accs))
