@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import numpy as np
-import matplotlib.pyplot as plt
 import cv2
 from sklearn.decomposition import IncrementalPCA
 from sklearn.lda import LDA
@@ -11,7 +10,7 @@ from loader import Face, AvgFace
 import argparse
 import yaml
 import threading
-import multiprocessing
+import multiprocessing as mp
 import time
 import joblib
 
@@ -52,14 +51,17 @@ def single_run(args):
     clf.fit(X_train,y_train)
     pred = clf.predict(X_test)
     return float(sum(pred == y_test))/len(pred)
+
 class MyClassifier:
     def __init__(self):
         pass
     def fit(self,X,y):
+        pass
         n_components = len(X)-len(np.unique(y))-7
         self.ipca = IncrementalPCA(n_components=n_components, batch_size=None)
         #print("Fitting PCA and transforming")
         self.ipca.fit(X)
+        
         X_pca = self.ipca.transform(X)
 
         self.lda = LDA()
@@ -108,7 +110,7 @@ class Experiment:#(multiprocessing.Process):
 
     def xvalid(self,Classifier):
         xvconf = self.exconf["crossvalidation"]
-        p = multiprocessing.Pool(2)
+        #p = multiprocessing.Pool(2)
         X = self.X
         y = self.y
 
@@ -116,23 +118,32 @@ class Experiment:#(multiprocessing.Process):
         #datas = [(Classifier,X[train_index],X[test_index],y[train_index],y[test_index]) for train_index,test_index in skf]
         #r = p.map(single_run,datas)
         #return r
+        import pdb; pdb.set_trace()
 
-        for train_index,test_index in skf:
+        for i,(train_index,test_index) in enumerate(skf):
             clf = Classifier()
 
             X_train, X_test = X[train_index], X[test_index]
             y_train, y_test = y[train_index], y[test_index]
+
+            start_time = time.time()
+
             clf.fit(X_train,y_train)
+
+            after_train_time = time.time()
+
             pred = clf.predict(X_test)
+
+            end_time = time.time()
+            print("[xvalid] - #{}/{} trained in {:.2f}s, tested in {:.2f}s, total {:.2f}s"
+                    .format(i+1,xvconf["k"],after_train_time - start_time,end_time - after_train_time,end_time - start_time))
+
+
             acc = float(sum(pred == y[test_index]))/len(pred)
             yield acc
 
 from Queue import Queue
-def main():
-    parser = argparse.ArgumentParser(description="Analysis")
-    parser.add_argument("--config",type=str,metavar="EXCONF",required=True,help="YAML configuration")
-    args = parser.parse_args()
-    conf = yaml.load(open(args.config))
+def action_xvalid(conf):
     exs = []
     queue = Queue()
     for i,exconf in enumerate(conf["exs"]):
@@ -147,6 +158,103 @@ def main():
         accs = queue.get()
         print(accs)
         print(np.mean(accs))
+def action_avg(conf):
+    pass
+
+
+
+import sharedmem
+import os
+import psutil
+
+def mem(pid):
+    # return the memory usage in MB
+    process = psutil.Process(pid)
+    mem = process.get_memory_info()[0] / float(2 ** 20)
+    return mem
+
+q = mp.Queue()
+class XValidator(mp.Process):
+    """Parallel validator"""
+    def __init__(self, X, y, train_index, test_index):
+        mp.Process.__init__(self)
+        self.X = np.frombuffer(X,dtype=np.uint8).reshape((len(y),200*200))
+        self.y = np.frombuffer(y,dtype=np.uint8)
+        self.train_index = train_index
+        self.test_index = test_index
+    def run(self):
+        pid = os.getpid()
+        print("[{}] - started with {:.2f}MB".format(pid,mem(os.getpid())))
+        X_train, X_test = self.X[self.train_index], self.X[self.test_index]
+        y_train, y_test = self.y[self.train_index], self.y[self.test_index]
+
+        clf = MyClassifier()
+
+        start_time = time.time()
+
+        #print(X_train.shape)
+        clf.fit(X_train,y_train)
+        q.put(mem(os.getpid()))
+
+        #after_train_time = time.time()
+
+        #pred = clf.predict(X_test)
+
+        #end_time = time.time()
+
+        #print("[xvalid] - trained in {:.2f}s, tested in {:.2f}s, total {:.2f}s"
+                #.format(after_train_time - start_time,end_time - after_train_time,end_time - start_time))
+
+
+        #acc = float(sum(pred == y_test))/len(pred)
+        
+        
+        
+
+def main():
+    w_start = time.time()
+    n = 200
+    size = (200,200)
+    X = sharedmem.empty(n*size[0]*size[1],dtype=np.uint8)
+    y = sharedmem.empty(n,dtype=np.uint8)
+    X[:] = np.array(np.random.random_integers(0,255,n*size[0]*size[1]),dtype=np.uint8)
+    y[:] = np.array(np.random.random_integers(0,2,n),dtype=np.uint8)
+
+    #import pdb; pdb.set_trace()
+    skf = StratifiedShuffleSplit(y, 8, test_size=0.2,random_state=0)
+    validators = [XValidator(X, y, train_index, test_index) for train_index, test_index in skf]
+
+    vgn = 1
+    vgsize = 8
+    vgroups = np.array(validators).reshape((vgn,vgsize))
+
+    for vg in vgroups:
+        for v in vg:
+            v.start()
+
+        t = 0
+        for v in vg:
+            v.join()
+            t += q.get()
+        print(t)
+
+    
+    w_end = time.time()
+    print("[an] - total {:.2f}s"
+            .format(w_end - w_start))
+
+    return
+    parser = argparse.ArgumentParser(description="Analysis")
+    parser.add_argument("--config",type=str,metavar="EXCONF",required=True,help="YAML configuration")
+    parser.add_argument("action",choices=["xvalid","avg"],help="Action to perform")
+    args = parser.parse_args()
+    conf = yaml.load(open(args.config))
+    if args.action == "xvalid":
+        action_xvalid(conf)
+    elif args.action == "avg":
+        action_avg(conf)
+    else: 
+        print("Unknown action")
 
 if __name__ == "__main__":
     main()

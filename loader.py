@@ -13,7 +13,7 @@ from skimage.color import rgb2gray
 from skimage.feature import local_binary_pattern
 from skimage.exposure import adjust_gamma, adjust_log
 from skimage.exposure import rescale_intensity
-from skimage.filter import gaussian_filter
+from skimage.filters import gaussian_filter
 
 config = yaml.load(open(os.environ["FDCONFIG"]))
 
@@ -21,8 +21,11 @@ class Face:
     def __init__(self,**kwargs):
         for key in kwargs:
             setattr(self,key,kwargs[key])
-        self.img_filename = self.image_id + ".jpg"
-        self.img_path = os.path.join(config["images"],self.img_filename)
+        self.filename = self.image_id + ".jpg"
+        self.path = os.path.join(config["images"],self.filename)
+        url_params = config["imgsrv"]
+        url_params["filename"] = self.filename
+        self.url = "http://{host}:{port}/{filename}".format(**url_params)
 
     def crop_face(self,m):
         self.origin = self.bound[0]
@@ -30,16 +33,14 @@ class Face:
         self.eye_right -= self.origin
         return m[self.bound[0][1]:self.bound[1][1],self.bound[0][0]:self.bound[1][0]]
     def download(self):
-        self.url = "http://{:host}:{:port}/{:filename}".format(filename=self.filename,**config["imgsrv"])
-        r = requests.get(url)
+        r = requests.get(self.url)
         i = Image.open(StringIO(r.content))
-        i.save(self.image_path)
+        i.save(self.path)
     def imread(self):
-        if not os.path.exists(self.img_path):
+        if not os.path.exists(self.path):
             self.download()
-        m = cv2.imread(self.img_path)
+        m = cv2.imread(self.path)
         m = self.crop_face(m)
-        #m = self.preproc(m)
         return m
     def preproc(self,face):
         def contrast_stretching(face,pr):
@@ -82,7 +83,8 @@ class Face:
         M[:,2] += midpoint(avg_eye_left,avg_eye_right) - midpoint(self.eye_left,self.eye_right)
 
         m2 = cv2.warpAffine(m,M,size)
-        return m2
+        m3 = self.preproc(m2)
+        return m3
 
 class AvgFace:
     def __init__(self,exconf):

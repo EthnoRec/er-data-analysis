@@ -4,7 +4,7 @@ exs:
         size:       [200,200]
       crossvalidation:
         k:          10
-        test_size:  0.9
+        test_size:  0.2
 
       classes:
         - city:     Mumbai
@@ -19,113 +19,113 @@ exs:
           gender:   1
           n:        500
     ## FIndiaM vs FBrazilBH - contrast(2,98)
-    - eyefitting:
-        size:       [200,200]
-      crossvalidation:
-        k:          10
-        test_size:  0.9
-      preprocessing:
-        contrast_stretching:
-            percentiles: [2,98]
+    #- eyefitting:
+        #size:       [200,200]
+      #crossvalidation:
+        #k:          10
+        #test_size:  0.9
+      #preprocessing:
+        #contrast_stretching:
+            #percentiles: [2,98]
 
-      classes:
-        - city:     Mumbai
-          country:  India
-          id:       1
-          gender:   1
-          n:        500
+      #classes:
+        #- city:     Mumbai
+          #country:  India
+          #id:       1
+          #gender:   1
+          #n:        500
 
-        - city:     Belo Horizonte
-          country:  Brazil
-          id:       2
-          gender:   1
-          n:        500
-    ## FIndiaM vs FBrazilBH - contrast(5,95)
-    - eyefitting:
-        size:       [200,200]
-      crossvalidation:
-        k:          10
-        test_size:  0.9
+        #- city:     Belo Horizonte
+          #country:  Brazil
+          #id:       2
+          #gender:   1
+          #n:        500
+    ### FIndiaM vs FBrazilBH - contrast(5,95)
+    #- eyefitting:
+        #size:       [200,200]
+      #crossvalidation:
+        #k:          10
+        #test_size:  0.9
 
-      preprocessing:
-        contrast_stretching:
-            percentiles: [5,95]
-      classes:
-        - city:     Mumbai
-          country:  India
-          id:       1
-          gender:   1
-          n:        500
+      #preprocessing:
+        #contrast_stretching:
+            #percentiles: [5,95]
+      #classes:
+        #- city:     Mumbai
+          #country:  India
+          #id:       1
+          #gender:   1
+          #n:        500
 
-        - city:     Belo Horizonte
-          country:  Brazil
-          id:       2
-          gender:   1
-          n:        500
-    ## FIndiaM vs FBrazilBH - contrast(10,90)
-    - eyefitting:
-        size:       [200,200]
-      crossvalidation:
-        k:          10
-        test_size:  0.9
+        #- city:     Belo Horizonte
+          #country:  Brazil
+          #id:       2
+          #gender:   1
+          #n:        500
+    ### FIndiaM vs FBrazilBH - contrast(10,90)
+    #- eyefitting:
+        #size:       [200,200]
+      #crossvalidation:
+        #k:          10
+        #test_size:  0.9
 
-      preprocessing:
-        contrast_stretching:
-            percentiles: [10,90]
-      classes:
-        - city:     Mumbai
-          country:  India
-          id:       1
-          gender:   1
-          n:        500
+      #preprocessing:
+        #contrast_stretching:
+            #percentiles: [10,90]
+      #classes:
+        #- city:     Mumbai
+          #country:  India
+          #id:       1
+          #gender:   1
+          #n:        500
 
-        - city:     Belo Horizonte
-          country:  Brazil
-          id:       2
-          gender:   1
-          n:        500
+        #- city:     Belo Horizonte
+          #country:  Brazil
+          #id:       2
+          #gender:   1
+          #n:        500
 
-    ## FIndiaM vs FBrazilBH - contrast(15,85)
-    - eyefitting:
-        size:       [200,200]
-      crossvalidation:
-        k:          10
-        test_size:  0.9
+    ### FIndiaM vs FBrazilBH - contrast(15,85)
+    #- eyefitting:
+        #size:       [200,200]
+      #crossvalidation:
+        #k:          10
+        #test_size:  0.9
 
-      preprocessing:
-        contrast_stretching:
-            percentiles: [15,85]
-      classes:
-        - city:     Mumbai
-          country:  India
-          id:       1
-          gender:   1
-          n:        500
+      #preprocessing:
+        #contrast_stretching:
+            #percentiles: [15,85]
+      #classes:
+        #- city:     Mumbai
+          #country:  India
+          #id:       1
+          #gender:   1
+          #n:        500
 
-        - city:     Belo Horizonte
-          country:  Brazil
-          id:       2
-          gender:   1
-          n:        500
-    ## FIndiaM vs FBrazilBH - contrast(20,80)
-    - eyefitting:
-        size:       [200,200]
-      crossvalidation:
-        k:          10
-        test_size:  0.9
+        #- city:     Belo Horizonte
+          #country:  Brazil
+          #id:       2
+          #gender:   1
+          #n:        500
+    ### FIndiaM vs FBrazilBH - contrast(20,80)
+    #- eyefitting:
+        #size:       [200,200]
+      #crossvalidation:
+        #k:          10
+        #test_size:  0.9
 
-      preprocessing:
-        contrast_stretching:
-            percentiles: [20,80]
-      classes:
-        - city:     Mumbai
-          country:  India
-          id:       1
-          gender:   1
-          n:        500
+      #preprocessing:
+        #contrast_stretching:
+            #percentiles: [20,80]
+      #classes:
+        #- city:     Mumbai
+          #country:  India
+          #id:       1
+          #gender:   1
+          #n:        500
 
-        - city:     Belo Horizonte
-          country:  Brazil
-          id:       2
-          gender:   1
-          n:        500
+        #- city:     Belo Horizonte
+          #country:  Brazil
+          #id:       2
+          #gender:   1
+          #n:        500
