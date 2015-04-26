@@ -1,10 +1,11 @@
 exs:
     # FIndiaM vs FBrazilBH - no preproc
     - eyefitting:
-        size:       [200,200]
+        size:       [128,128]
       crossvalidation:
-        k:          10
+        k:          6
         test_size:  0.2
+        vgsize:     1
 
       classes:
         - city:     Mumbai

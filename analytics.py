@@ -4,15 +4,16 @@ import numpy as np
 import cv2
 from sklearn.decomposition import IncrementalPCA
 from sklearn.lda import LDA
+from sklearn.metrics import confusion_matrix
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.cross_validation import StratifiedShuffleSplit
 from loader import Face, AvgFace
 import argparse
 import yaml
-import threading
 import multiprocessing as mp
 import time
-import joblib
+import os
+import psutil
 
 
 
@@ -44,14 +45,6 @@ class BasicClassifier:
         X3 = [ np.histogram(np.ravel(local_binary_pattern(x,8,1,"uniform")),bins=10)[0] for x in X2 ]
         return self.clf.predict(X3)
 
-def single_run(args):
-    Classifier,X_train,X_test,y_train,y_test = args
-    clf = Classifier()
-
-    clf.fit(X_train,y_train)
-    pred = clf.predict(X_test)
-    return float(sum(pred == y_test))/len(pred)
-
 class MyClassifier:
     def __init__(self):
         pass
@@ -77,95 +70,67 @@ class MyClassifier:
         X_lda = self.lda.transform(X_pca)
         return self.clf.predict(X_lda)
 
-class Experiment:#(multiprocessing.Process):
+class Experiment:
     def __init__(self,exconf):
-        #multiprocessing.Process.__init__(self)
         self.exconf = exconf
+        # Confusion matrix queue
+        self.cmq = mp.Queue()
+
+    def make_validator(self, train_index, test_index):
+        xv = XValidator()
+        xv.faces_train, xv.y_train = self.af.faces[train_index], self.y[train_index]
+        xv.faces_test, xv.y_test = self.af.faces[test_index], self.y[test_index]
+        xv.cmq = self.cmq
+        return xv
 
     def run(self):
-        print("Fitting eyes")
         start_time = time.time()
 
         self.af = AvgFace(self.exconf)
+        self.y = np.array([int(face.c)+1 for face in self.af.faces])
+        assert len(np.unique(self.y)) >= 2
 
         end_time = time.time()
         print("AvgFace done in {:2f}s".format(end_time - start_time))
 
 
-
-        start_time = time.time()
-        self.X = np.array([np.ravel(face.fit_eyes()) for face in self.af.faces])
-        end_time = time.time()
-
-        print("Fit eyes done in {:2f}s".format(end_time - start_time))
-
-        print("End fit eyes")
-        self.y = np.array([int(face.c)+1 for face in self.af.faces])
-        assert len(np.unique(self.y)) >= 2
-
-        print("Start xvalid")
-        accs = list(self.xvalid(MyClassifier))
-        self.queue.put(accs)
-        print("End xvalid")
-
-    def xvalid(self,Classifier):
         xvconf = self.exconf["crossvalidation"]
-        #p = multiprocessing.Pool(2)
-        X = self.X
-        y = self.y
-
-        skf = StratifiedShuffleSplit(y, xvconf["k"], test_size=xvconf["test_size"],random_state=0)
-        #datas = [(Classifier,X[train_index],X[test_index],y[train_index],y[test_index]) for train_index,test_index in skf]
-        #r = p.map(single_run,datas)
-        #return r
-        import pdb; pdb.set_trace()
-
-        for i,(train_index,test_index) in enumerate(skf):
-            clf = Classifier()
-
-            X_train, X_test = X[train_index], X[test_index]
-            y_train, y_test = y[train_index], y[test_index]
-
-            start_time = time.time()
-
-            clf.fit(X_train,y_train)
-
-            after_train_time = time.time()
-
-            pred = clf.predict(X_test)
-
-            end_time = time.time()
-            print("[xvalid] - #{}/{} trained in {:.2f}s, tested in {:.2f}s, total {:.2f}s"
-                    .format(i+1,xvconf["k"],after_train_time - start_time,end_time - after_train_time,end_time - start_time))
 
 
-            acc = float(sum(pred == y[test_index]))/len(pred)
-            yield acc
+        skf = StratifiedShuffleSplit(self.y, xvconf["k"], test_size=xvconf["test_size"],random_state=0)
+        validators = [self.make_validator(train_index,test_index) for train_index, test_index in skf]
 
-from Queue import Queue
+
+        vgsize = xvconf["vgsize"]
+        assert xvconf["k"]%vgsize == 0
+        vgn = xvconf["k"]/vgsize
+
+        vgroups = np.array(validators).reshape((vgn,vgsize))
+
+        n_classes = len(np.unique(self.y))
+        cm = np.zeros((n_classes,n_classes))
+        for vg in vgroups:
+            for v in vg:
+                v.start()
+
+            for v in vg:
+                v.join()
+
+        while not self.cmq.empty():
+            cm += self.cmq.get()
+        print(cm)
+
 def action_xvalid(conf):
     exs = []
-    queue = Queue()
+    queue = mp.Queue()
     for i,exconf in enumerate(conf["exs"]):
         ex = Experiment(exconf)
-        ex.i = i
-        ex.queue = queue
         exs.append(ex)
         ex.run()
 
-    for ex in exs:
-        #ex.join()
-        accs = queue.get()
-        print(accs)
-        print(np.mean(accs))
 def action_avg(conf):
     pass
 
-
-
-import sharedmem
-import os
-import psutil
 
 def mem(pid):
     # return the memory usage in MB
@@ -173,88 +138,53 @@ def mem(pid):
     mem = process.get_memory_info()[0] / float(2 ** 20)
     return mem
 
-q = mp.Queue()
 class XValidator(mp.Process):
     """Parallel validator"""
-    def __init__(self, X, y, train_index, test_index):
+    def __init__(self):
         mp.Process.__init__(self)
-        self.X = np.frombuffer(X,dtype=np.uint8).reshape((len(y),200*200))
-        self.y = np.frombuffer(y,dtype=np.uint8)
-        self.train_index = train_index
-        self.test_index = test_index
     def run(self):
         pid = os.getpid()
-        print("[{}] - started with {:.2f}MB".format(pid,mem(os.getpid())))
-        X_train, X_test = self.X[self.train_index], self.X[self.test_index]
-        y_train, y_test = self.y[self.train_index], self.y[self.test_index]
+        print("[{}] - started with {:.2f}MB ({}/{} samples)".format(pid,mem(os.getpid()),len(self.y_train),len(self.y_test)))
+
+        self.X_train = np.array([np.ravel(face.fit_eyes()) for face in self.faces_train])
+        self.X_test = np.array([np.ravel(face.fit_eyes()) for face in self.faces_test])
+        print("[{}] - fit eyes {:.2f}MB".format(pid,mem(os.getpid())))
 
         clf = MyClassifier()
 
         start_time = time.time()
 
-        #print(X_train.shape)
-        clf.fit(X_train,y_train)
-        q.put(mem(os.getpid()))
+        clf.fit(self.X_train,self.y_train)
+        print("[{}] - fit CLF {:.2f}MB".format(pid,mem(os.getpid())))
 
-        #after_train_time = time.time()
+        after_train_time = time.time()
 
-        #pred = clf.predict(X_test)
+        y_pred = clf.predict(self.X_test)
 
-        #end_time = time.time()
+        end_time = time.time()
 
-        #print("[xvalid] - trained in {:.2f}s, tested in {:.2f}s, total {:.2f}s"
-                #.format(after_train_time - start_time,end_time - after_train_time,end_time - start_time))
+        print("[{}] - trained in {:.2f}s, tested in {:.2f}s, total {:.2f}s"
+                .format(pid,after_train_time - start_time,end_time - after_train_time,end_time - start_time))
 
-
-        #acc = float(sum(pred == y_test))/len(pred)
+        self.cmq.put(confusion_matrix(self.y_test,y_pred))
         
         
-        
-
 def main():
-    w_start = time.time()
-    n = 200
-    size = (200,200)
-    X = sharedmem.empty(n*size[0]*size[1],dtype=np.uint8)
-    y = sharedmem.empty(n,dtype=np.uint8)
-    X[:] = np.array(np.random.random_integers(0,255,n*size[0]*size[1]),dtype=np.uint8)
-    y[:] = np.array(np.random.random_integers(0,2,n),dtype=np.uint8)
-
-    #import pdb; pdb.set_trace()
-    skf = StratifiedShuffleSplit(y, 8, test_size=0.2,random_state=0)
-    validators = [XValidator(X, y, train_index, test_index) for train_index, test_index in skf]
-
-    vgn = 1
-    vgsize = 8
-    vgroups = np.array(validators).reshape((vgn,vgsize))
-
-    for vg in vgroups:
-        for v in vg:
-            v.start()
-
-        t = 0
-        for v in vg:
-            v.join()
-            t += q.get()
-        print(t)
-
-    
-    w_end = time.time()
-    print("[an] - total {:.2f}s"
-            .format(w_end - w_start))
-
-    return
     parser = argparse.ArgumentParser(description="Analysis")
     parser.add_argument("--config",type=str,metavar="EXCONF",required=True,help="YAML configuration")
     parser.add_argument("action",choices=["xvalid","avg"],help="Action to perform")
     args = parser.parse_args()
     conf = yaml.load(open(args.config))
+    w_start = time.time()
     if args.action == "xvalid":
         action_xvalid(conf)
     elif args.action == "avg":
         action_avg(conf)
     else: 
         print("Unknown action")
+    w_end = time.time()
+    print("[an] - total {:.2f}s"
+            .format(w_end - w_start))
 
 if __name__ == "__main__":
     main()

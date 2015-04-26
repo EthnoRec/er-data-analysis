@@ -39,7 +39,7 @@ class Face:
     def imread(self):
         if not os.path.exists(self.path):
             self.download()
-        m = cv2.imread(self.path)
+        m = cv2.imread(self.path, cv2.CV_LOAD_IMAGE_GRAYSCALE)
         m = self.crop_face(m)
         return m
     def preproc(self,face):
@@ -127,3 +127,4 @@ class AvgFace:
                     self.faces.append(Face(parent=self,row=row,bound=bound,image_id=row["image_id"],eye_left=eye_left_m,eye_right=eye_right_m,c=row["class"]))
                 self.avg_eye_left = np.array([size[0]/2-size[0]/10,size[1]/2])
                 self.avg_eye_right = np.array([size[0]/2+size[0]/10,size[1]/2])
+                self.faces = np.array(self.faces)
