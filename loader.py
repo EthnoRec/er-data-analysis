@@ -10,7 +10,6 @@ import psycopg2.extras
 import time
 
 from skimage.color import rgb2gray
-from skimage.feature import local_binary_pattern
 from skimage.exposure import adjust_gamma, adjust_log
 from skimage.exposure import rescale_intensity
 from skimage.filters import gaussian_filter
@@ -21,6 +20,7 @@ class Face:
     def __init__(self,**kwargs):
         for key in kwargs:
             setattr(self,key,kwargs[key])
+        self.broken = False
         self.filename = self.image_id + ".jpg"
         self.path = os.path.join(config["images"],self.filename)
         url_params = config["imgsrv"]
@@ -34,8 +34,12 @@ class Face:
         return m[self.bound[0][1]:self.bound[1][1],self.bound[0][0]:self.bound[1][0]]
     def download(self):
         r = requests.get(self.url)
-        i = Image.open(StringIO(r.content))
-        i.save(self.path)
+        try:
+            i = Image.open(StringIO(r.content))
+            i.save(self.path)
+        except:
+            if os.path.exists(self.path):
+                os.remove(self.path)
     def imread(self):
         if not os.path.exists(self.path):
             self.download()

@@ -2,12 +2,12 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 import cv2
-from sklearn.decomposition import IncrementalPCA
-from sklearn.lda import LDA
 from sklearn import metrics
-from sklearn.neighbors import KNeighborsClassifier
 from sklearn.cross_validation import StratifiedShuffleSplit
+
 from loader import Face, AvgFace
+import classifiers
+
 import argparse
 import yaml
 import multiprocessing as mp
@@ -19,70 +19,36 @@ import logging as log
 log.basicConfig(level=log.INFO)
 
 
-
-def gen_avg(exconf):
-    af = AvgFace(exconf)
-    size = af.exconf["eyefitting"]["size"]
-    total = np.zeros((size[0],size[1],3))
-    total_score = 0
-    n = len(af.faces)
-    print("Total faces: ",n)
-    for face in af.faces[:n]:
-        fe = preproc(face.fit_eyes())
-        total += fe
-        cv2.imwrite("mapped/m_{}.jpg".format(face.image_id),fe)
-    avg = total/n
-    cv2.imwrite("avg.jpg",avg)
-
-class BasicClassifier:
-    def __init__(self):
-        pass
-    def fit(self,X,y): 
-        X2 = np.array([rgb2gray(x) for x in X])
-        X3 = [ np.histogram(np.ravel(local_binary_pattern(x,8,1,"uniform")),bins=10)[0] for x in X2 ]
-        self.clf = KNeighborsClassifier()
-        self.clf.fit(X3,y)
-
-    def predict(self,X):
-        X2 = np.array([rgb2gray(x) for x in X])
-        X3 = [ np.histogram(np.ravel(local_binary_pattern(x,8,1,"uniform")),bins=10)[0] for x in X2 ]
-        return self.clf.predict(X3)
-
-class MyClassifier:
-    def __init__(self):
-        pass
-    def fit(self,X,y):
-        pass
-        n_components = len(X)-len(np.unique(y))-7
-        self.ipca = IncrementalPCA(n_components=n_components, batch_size=None)
-        self.ipca.fit(X)
-        
-        X_pca = self.ipca.transform(X)
-
-        self.lda = LDA()
-        self.lda.fit(X_pca,y)
-        X_lda = self.lda.transform(X_pca)
-
-        self.clf = KNeighborsClassifier(n_neighbors=3)
-        self.clf.fit(X_lda,y)
-
-    def predict(self,X):
-        X_pca = self.ipca.transform(X)
-        X_lda = self.lda.transform(X_pca)
-        return self.clf.predict(X_lda)
-
+#def gen_avg(exconf):
+    #af = AvgFace(exconf)
+    #size = af.exconf["eyefitting"]["size"]
+    #total = np.zeros((size[0],size[1],3))
+    #total_score = 0
+    #n = len(af.faces)
+    #print("Total faces: ",n)
+    #for face in af.faces[:n]:
+        #fe = preproc(face.fit_eyes())
+        #total += fe
+        #cv2.imwrite("mapped/m_{}.jpg".format(face.image_id),fe)
+    #avg = total/n
+    #cv2.imwrite("avg.jpg",avg)
 
 class Experiment:
     def __init__(self,exconf):
         self.exconf = exconf
         # Confusion matrix queue
         self.cmq = mp.Queue()
+    def new_clf(self):
+        name = self.exconf["classifier"]["name"]
+        options = self.exconf["classifier"]
+        return getattr(classifiers,name)(options)
 
     def make_validator(self, train_index, test_index):
         xv = XValidator()
         xv.faces_train, xv.y_train = self.af.faces[train_index], self.y[train_index]
         xv.faces_test, xv.y_test = self.af.faces[test_index], self.y[test_index]
         xv.cmq = self.cmq
+        xv.clf = self.new_clf()
         return xv
     def report(self):
         y_test_total = []
@@ -101,14 +67,13 @@ class Experiment:
 
         cm = metrics.confusion_matrix(y_test_total,y_pred_total)
         np.set_printoptions(precision=2)
-        log.info("Confusion matrix, without normalization")
-        log.info("\n"+str(cm))
+        log.info("{:*^30}".format("Experiment"))
+        log.info("Confusion matrix, without normalization\n"+str(cm))
 
         cm_normalized = cm.astype("float") / cm.sum(axis=1)[:, np.newaxis]
-        log.info("Normalized confusion matrix")
-        log.info("\n"+str(cm_normalized))
+        log.info("Normalized confusion matrix\n"+str(cm_normalized))
 
-        log.info("\n"+str(metrics.classification_report(y_test_total,y_pred_total,target_names=labels)))
+        log.info("Report\n"+str(metrics.classification_report(y_test_total,y_pred_total,target_names=labels)))
 
 
     def run(self):
@@ -177,25 +142,28 @@ class XValidator(mp.Process):
             for face in faces:
                 fitted = face.fit_eyes()
                 if fitted is not None:
-                    nfaces.append(np.ravel(fitted))
+                    nfaces.append(fitted)
+                else:
+                    face.broken = True
             return np.array(nfaces)
         self.X_train = ignore_broken(self.faces_train)
         self.X_test = ignore_broken(self.faces_test)
-        #self.X_train = np.array([np.ravel(face.fit_eyes()) for face in self.faces_train])
-        #self.X_test = np.array([np.ravel(face.fit_eyes()) for face in self.faces_test])
+        self.y_train = self.y_train[np.array([not face.broken for face in self.faces_train])]
+        self.y_test = self.y_test[np.array([not face.broken for face in self.faces_test])]
 
+        assert len(self.X_train) == len(self.y_train)
+        assert len(self.X_test) == len(self.y_test)
         log.debug("[{}] - fit eyes {:.2f}MB".format(pid,mem(os.getpid())))
 
-        clf = MyClassifier()
 
         start_time = time.time()
 
-        clf.fit(self.X_train,self.y_train)
+        self.clf.fit(self.X_train,self.y_train)
         log.debug("[{}] - fit CLF {:.2f}MB".format(pid,mem(os.getpid())))
 
         after_train_time = time.time()
 
-        y_pred = clf.predict(self.X_test)
+        y_pred = self.clf.predict(self.X_test)
 
         end_time = time.time()
 
