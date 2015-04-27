@@ -14,6 +14,9 @@ import multiprocessing as mp
 import time
 import os
 import psutil
+import logging as log
+
+log.basicConfig(level=log.INFO)
 
 
 
@@ -52,13 +55,11 @@ class MyClassifier:
         pass
         n_components = len(X)-len(np.unique(y))-7
         self.ipca = IncrementalPCA(n_components=n_components, batch_size=None)
-        #print("Fitting PCA and transforming")
         self.ipca.fit(X)
         
         X_pca = self.ipca.transform(X)
 
         self.lda = LDA()
-        #print("Fitting LDA")
         self.lda.fit(X_pca,y)
         X_lda = self.lda.transform(X_pca)
 
@@ -100,14 +101,14 @@ class Experiment:
 
         cm = metrics.confusion_matrix(y_test_total,y_pred_total)
         np.set_printoptions(precision=2)
-        print("Confusion matrix, without normalization")
-        print(cm)
+        log.info("Confusion matrix, without normalization")
+        log.info("\n"+str(cm))
 
         cm_normalized = cm.astype("float") / cm.sum(axis=1)[:, np.newaxis]
-        print("Normalized confusion matrix")
-        print(cm_normalized)
+        log.info("Normalized confusion matrix")
+        log.info("\n"+str(cm_normalized))
 
-        print(metrics.classification_report(y_test_total,y_pred_total,target_names=labels))
+        log.info("\n"+str(metrics.classification_report(y_test_total,y_pred_total,target_names=labels)))
 
 
     def run(self):
@@ -118,7 +119,7 @@ class Experiment:
         assert len(np.unique(self.y)) >= 2
 
         end_time = time.time()
-        print("AvgFace done in {:2f}s".format(end_time - start_time))
+        log.debug("AvgFace done in {:2f}s".format(end_time - start_time))
 
 
         xvconf = self.exconf["crossvalidation"]
@@ -169,18 +170,28 @@ class XValidator(mp.Process):
         mp.Process.__init__(self)
     def run(self):
         pid = os.getpid()
-        print("[{}] - started with {:.2f}MB ({}/{} samples)".format(pid,mem(os.getpid()),len(self.y_train),len(self.y_test)))
+        log.debug("[{}] - started with {:.2f}MB ({}/{} samples)".format(pid,mem(os.getpid()),len(self.y_train),len(self.y_test)))
 
-        self.X_train = np.array([np.ravel(face.fit_eyes()) for face in self.faces_train])
-        self.X_test = np.array([np.ravel(face.fit_eyes()) for face in self.faces_test])
-        print("[{}] - fit eyes {:.2f}MB".format(pid,mem(os.getpid())))
+        def ignore_broken(faces):
+            nfaces = []
+            for face in faces:
+                fitted = face.fit_eyes()
+                if fitted is not None:
+                    nfaces.append(np.ravel(fitted))
+            return np.array(nfaces)
+        self.X_train = ignore_broken(self.faces_train)
+        self.X_test = ignore_broken(self.faces_test)
+        #self.X_train = np.array([np.ravel(face.fit_eyes()) for face in self.faces_train])
+        #self.X_test = np.array([np.ravel(face.fit_eyes()) for face in self.faces_test])
+
+        log.debug("[{}] - fit eyes {:.2f}MB".format(pid,mem(os.getpid())))
 
         clf = MyClassifier()
 
         start_time = time.time()
 
         clf.fit(self.X_train,self.y_train)
-        print("[{}] - fit CLF {:.2f}MB".format(pid,mem(os.getpid())))
+        log.debug("[{}] - fit CLF {:.2f}MB".format(pid,mem(os.getpid())))
 
         after_train_time = time.time()
 
@@ -188,7 +199,7 @@ class XValidator(mp.Process):
 
         end_time = time.time()
 
-        print("[{}] - trained in {:.2f}s, tested in {:.2f}s, total {:.2f}s"
+        log.debug("[{}] - trained in {:.2f}s, tested in {:.2f}s, total {:.2f}s"
                 .format(pid,after_train_time - start_time,end_time - after_train_time,end_time - start_time))
 
         self.cmq.put((self.y_test,y_pred))
@@ -208,7 +219,7 @@ def main():
     else: 
         print("Unknown action")
     w_end = time.time()
-    print("[an] - total {:.2f}s"
+    log.info("[an] - total {:.2f}s"
             .format(w_end - w_start))
 
 if __name__ == "__main__":

@@ -40,6 +40,8 @@ class Face:
         if not os.path.exists(self.path):
             self.download()
         m = cv2.imread(self.path, cv2.CV_LOAD_IMAGE_GRAYSCALE)
+        if m is None:
+            return None
         m = self.crop_face(m)
         return m
     def preproc(self,face):
@@ -58,6 +60,7 @@ class Face:
         if "contrast_stretching" in ppconf:
             pr = tuple(ppconf["contrast_stretching"]["percentiles"])
             face = contrast_stretching(face,pr)
+
         
         return face
     def fit_eyes(self):
@@ -71,6 +74,8 @@ class Face:
         avg_eye_right = np.array([size[0]/2 + size[0]/5,size[1]*0.3])
 
         m = self.imread()
+        if m is None:
+            return None
 
         avg_eye_v = np.int16(avg_eye_right - avg_eye_left)
         eye_v = np.int16(self.eye_right - self.eye_left)
@@ -117,7 +122,7 @@ class AvgFace:
                 cur.execute(q)
                 res = cur.fetchall()
                 end_time = time.time()
-                print("Fetched in {:2f}s".format(end_time - start_time))
+                #print("Fetched in {:2f}s".format(end_time - start_time))
 
                 self.faces = []
                 for row in res:
