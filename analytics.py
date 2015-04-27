@@ -4,7 +4,7 @@ import numpy as np
 import cv2
 from sklearn.decomposition import IncrementalPCA
 from sklearn.lda import LDA
-from sklearn.metrics import confusion_matrix
+from sklearn import metrics
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.cross_validation import StratifiedShuffleSplit
 from loader import Face, AvgFace
@@ -70,6 +70,7 @@ class MyClassifier:
         X_lda = self.lda.transform(X_pca)
         return self.clf.predict(X_lda)
 
+
 class Experiment:
     def __init__(self,exconf):
         self.exconf = exconf
@@ -82,6 +83,32 @@ class Experiment:
         xv.faces_test, xv.y_test = self.af.faces[test_index], self.y[test_index]
         xv.cmq = self.cmq
         return xv
+    def report(self):
+        y_test_total = []
+        y_pred_total = []
+        while not self.cmq.empty():
+            y_test, y_pred = self.cmq.get()
+            y_test_total.append(y_test)
+            y_pred_total.append(y_pred)
+
+        y_test_total = np.ravel(y_test_total)
+        y_pred_total = np.ravel(y_pred_total)
+
+        def city_fmt(city):
+            return "".join([l for l in city if l.isupper()])
+        labels = [["M","F"][c["gender"]]+c["country"]+city_fmt(c["city"]) for c in self.exconf["classes"]]
+
+        cm = metrics.confusion_matrix(y_test_total,y_pred_total)
+        np.set_printoptions(precision=2)
+        print("Confusion matrix, without normalization")
+        print(cm)
+
+        cm_normalized = cm.astype("float") / cm.sum(axis=1)[:, np.newaxis]
+        print("Normalized confusion matrix")
+        print(cm_normalized)
+
+        print(metrics.classification_report(y_test_total,y_pred_total,target_names=labels))
+
 
     def run(self):
         start_time = time.time()
@@ -115,10 +142,8 @@ class Experiment:
 
             for v in vg:
                 v.join()
+        self.report()
 
-        while not self.cmq.empty():
-            cm += self.cmq.get()
-        print(cm)
 
 def action_xvalid(conf):
     exs = []
@@ -166,7 +191,7 @@ class XValidator(mp.Process):
         print("[{}] - trained in {:.2f}s, tested in {:.2f}s, total {:.2f}s"
                 .format(pid,after_train_time - start_time,end_time - after_train_time,end_time - start_time))
 
-        self.cmq.put(confusion_matrix(self.y_test,y_pred))
+        self.cmq.put((self.y_test,y_pred))
         
         
 def main():

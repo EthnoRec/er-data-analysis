@@ -5,20 +5,26 @@ exs:
       crossvalidation:
         k:          6
         test_size:  0.2
-        vgsize:     1
+        vgsize:     2
 
       classes:
         - city:     Mumbai
           country:  India
           id:       1
           gender:   1
-          n:        500
+          n:        1000
+
+        - city:     Guadalajara
+          country:  Mexico
+          id:       2
+          gender:   1
+          n:        1000
 
         - city:     Belo Horizonte
           country:  Brazil
-          id:       2
+          id:       3
           gender:   1
-          n:        500
+          n:        1000
     ## FIndiaM vs FBrazilBH - contrast(2,98)
     #- eyefitting:
         #size:       [200,200]
