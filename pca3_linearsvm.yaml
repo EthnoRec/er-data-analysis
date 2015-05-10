@@ -1,13 +1,16 @@
+logger:   &logger
+    file:       pca3_linearsvm.results
+    level:      info
 exs:
     # FIndiaM vs FBrazilBH - no preproc
     - eyefitting:   &eyefitting
         size:       [128,128]
       feature:      
-        name:       PCASK
-        n_components:    25
+        name:       &feature PCASK 
+        n_components:    250
       classifier:   &classifier 
-        name:       NearestNeighbor
-        k:          5
+        name:       SVMSK
+        kernel:     linear
 
       crossvalidation: &xvalid
         k:          6
@@ -19,66 +22,67 @@ exs:
           country:  India
           id:       0
           gender:   1
-          n:        50
+          n:        500
 
         - city:     Belo Horizonte
           country:  Brazil
           id:       1
           gender:   1
-          n:        50
+          n:        500
+
 
     - eyefitting:   *eyefitting
       feature:      
-        name:       PCASK
-        n_components:    50
+        name:       *feature
+        n_components:    650
       classifier:   *classifier 
       crossvalidation: *xvalid
       classes: *classes
 
     - eyefitting:   *eyefitting
       feature:      
-        name:       PCASK
-        n_components:    75
+        name:       *feature
+        n_components:    700
       classifier:   *classifier 
       crossvalidation: *xvalid
       classes: *classes
 
     - eyefitting:   *eyefitting
       feature:      
-        name:       PCASK
-        n_components:    100
+        name:       *feature
+        n_components:    750
       classifier:   *classifier 
       crossvalidation: *xvalid
       classes: *classes
 
     - eyefitting:   *eyefitting
       feature:      
-        name:       PCASK
-        n_components:    125
+        name:       *feature
+        n_components:    800
       classifier:   *classifier 
       crossvalidation: *xvalid
       classes: *classes
 
     - eyefitting:   *eyefitting
       feature:      
-        name:       PCASK
-        n_components:    150
+        name:       *feature
+        n_components:    850
       classifier:   *classifier 
       crossvalidation: *xvalid
       classes: *classes
 
     - eyefitting:   *eyefitting
       feature:      
-        name:       PCASK
-        n_components:    175
+        name:       *feature
+        n_components:    900
       classifier:   *classifier 
       crossvalidation: *xvalid
       classes: *classes
 
     - eyefitting:   *eyefitting
       feature:      
-        name:       PCASK
-        n_components:    200
+        name:       *feature
+        n_components:    950
       classifier:   *classifier 
       crossvalidation: *xvalid
       classes: *classes

@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import numpy as np
-import cv2
 from sklearn import metrics
 from sklearn.cross_validation import StratifiedShuffleSplit
 
-from loader import Face, AvgFace
+from loader import AvgFace
 import classifiers
 
 import argparse
@@ -14,9 +13,10 @@ import multiprocessing as mp
 import time
 import os
 import psutil
-import logging as log
 
-log.basicConfig(level=log.INFO)
+from facerec.model import PredictableModel
+
+import logging as log
 
 
 #def gen_avg(exconf):
@@ -33,22 +33,53 @@ log.basicConfig(level=log.INFO)
     #avg = total/n
     #cv2.imwrite("avg.jpg",avg)
 
+
+# Resize, HistogramEqualization, TanTriggsPreprocessing, LBPPreprocessing,
+# MinMaxNormalizePreprocessing, ZScoreNormalizePreprocessing, ContrastStretching
+from facerec import preprocessing
+
+# PCA, LDA, Fisherfaces, SpatialHistogram(LBP)
+from facerec import feature
+
+# NearestNeighbor, SVM
+from facerec import classifier
+
 class Experiment:
     def __init__(self,exconf):
         self.exconf = exconf
         # Confusion matrix queue
         self.cmq = mp.Queue()
-    def new_clf(self):
+    def get_model(self):
+        name = self.exconf["feature"]["name"]
+        options = self.exconf["feature"]
+        del options["name"]
+        feat = getattr(feature,name)(**options)
+        options["name"] = name
+
         name = self.exconf["classifier"]["name"]
         options = self.exconf["classifier"]
-        return getattr(classifiers,name)(options)
+        del options["name"]
+        clf = getattr(classifier,name)(**options)
+        options["name"] = name
+
+        log.debug(name + " " + str(options))
+
+        return PredictableModel(feature=feat, classifier=clf)
 
     def make_validator(self, train_index, test_index):
         xv = XValidator()
         xv.faces_train, xv.y_train = self.af.faces[train_index], self.y[train_index]
         xv.faces_test, xv.y_test = self.af.faces[test_index], self.y[test_index]
         xv.cmq = self.cmq
-        xv.clf = self.new_clf()
+        xv.model = self.get_model()
+
+        name = self.exconf["preprocessing"]["name"]
+        options = self.exconf["preprocessing"]
+        del options["name"]
+        preproc = getattr(preprocessing,name)(**options)
+        options["name"] = name
+
+        xv.preproc = preproc
         return xv
     def report(self):
         y_test_total = []
@@ -80,7 +111,7 @@ class Experiment:
         start_time = time.time()
 
         self.af = AvgFace(self.exconf)
-        self.y = np.array([int(face.c)+1 for face in self.af.faces])
+        self.y = np.array([int(face.c) for face in self.af.faces])
         assert len(np.unique(self.y)) >= 2
 
         end_time = time.time()
@@ -100,20 +131,23 @@ class Experiment:
 
         vgroups = np.array(validators).reshape((vgn,vgsize))
 
-        n_classes = len(np.unique(self.y))
-        cm = np.zeros((n_classes,n_classes))
-        for vg in vgroups:
-            for v in vg:
-                v.start()
+        mt = True
+        if mt is True:
+            for vg in vgroups:
+                for v in vg:
+                    v.start()
 
-            for v in vg:
-                v.join()
+                for v in vg:
+                    v.join()
+        else:
+            for vg in vgroups:
+                for v in vg:
+                    v.run()
         self.report()
 
 
 def action_xvalid(conf):
     exs = []
-    queue = mp.Queue()
     for i,exconf in enumerate(conf["exs"]):
         ex = Experiment(exconf)
         exs.append(ex)
@@ -158,12 +192,12 @@ class XValidator(mp.Process):
 
         start_time = time.time()
 
-        self.clf.fit(self.X_train,self.y_train)
+        self.model.compute(self.X_train,self.y_train)
         log.debug("[{}] - fit CLF {:.2f}MB".format(pid,mem(os.getpid())))
 
         after_train_time = time.time()
 
-        y_pred = self.clf.predict(self.X_test)
+        y_pred = [ self.model.predict(x)[0] for x in self.X_test ]
 
         end_time = time.time()
 
@@ -171,20 +205,26 @@ class XValidator(mp.Process):
                 .format(pid,after_train_time - start_time,end_time - after_train_time,end_time - start_time))
 
         self.cmq.put((self.y_test,y_pred))
-        
-        
+
+
 def main():
     parser = argparse.ArgumentParser(description="Analysis")
     parser.add_argument("--config",type=str,metavar="EXCONF",required=True,help="YAML configuration")
     parser.add_argument("action",choices=["xvalid","avg"],help="Action to perform")
     args = parser.parse_args()
     conf = yaml.load(open(args.config))
+
+    if "file" in conf["logger"]:
+        level = log.INFO
+        if conf["logger"]["level"] == "info":
+            level = log.INFO
+        log.basicConfig(filename=conf["logger"]["file"],level=level)
     w_start = time.time()
     if args.action == "xvalid":
         action_xvalid(conf)
     elif args.action == "avg":
         action_avg(conf)
-    else: 
+    else:
         print("Unknown action")
     w_end = time.time()
     log.info("[an] - total {:.2f}s"
