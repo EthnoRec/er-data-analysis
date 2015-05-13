@@ -1,5 +1,5 @@
 logger:   &logger
-    file:       pca_linearsvm_150and150.results
+    file:       pca_linearsvm_150and150_3class.results
     level:      info
 exs:
     # FIndiaM vs FBrazilBH - no preproc
@@ -27,6 +27,12 @@ exs:
         - city:     Belo Horizonte
           country:  Brazil
           id:       1
+          gender:   1
+          n:        150
+
+        - city:     Guadalajara
+          country:  Mexico
+          id:       2
           gender:   1
           n:        150
 

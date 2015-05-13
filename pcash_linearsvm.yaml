@@ -1,0 +1,123 @@
+logger:   &logger
+    file:       pcash_linearsvm_150and150.results
+    level:      info
+exs:
+    # FIndiaM vs FBrazilBH - no preproc
+    - eyefitting:   &eyefitting
+        size:       [128,128]
+
+      features:      
+        - name:       SpatialHistogram
+          sz:         [4,4]
+
+        - name:       PCASK
+          n_components: 100
+
+      classifier:   &classifier 
+        name:       SVMSK
+        kernel:     linear
+
+      crossvalidation: &xvalid
+        k:          6
+        test_size:  0.2
+        vgsize:     3
+
+      classes: &classes
+        - city:     Mumbai
+          country:  India
+          id:       0
+          gender:   1
+          n:        150
+
+        - city:     Belo Horizonte
+          country:  Brazil
+          id:       1
+          gender:   1
+          n:        150
+    - eyefitting:   *eyefitting
+      features:      
+        - name:       SpatialHistogram
+          sz:         [4,4]
+
+        - name:       PCASK
+          n_components: 100
+      classifier:   *classifier 
+      crossvalidation: *xvalid
+      classes: *classes
+
+    - eyefitting:   *eyefitting
+      features:      
+        - name:       SpatialHistogram
+          sz:         [4,4]
+
+        - name:       PCASK
+          n_components: 125
+      classifier:   *classifier 
+      crossvalidation: *xvalid
+      classes: *classes
+
+    - eyefitting:   *eyefitting
+      features:      
+        - name:       SpatialHistogram
+          sz:         [4,4]
+
+        - name:       PCASK
+          n_components: 150
+      classifier:   *classifier 
+      crossvalidation: *xvalid
+      classes: *classes
+
+    - eyefitting:   *eyefitting
+      features:      
+        - name:       SpatialHistogram
+          sz:         [4,4]
+
+        - name:       PCASK
+          n_components: 175
+      classifier:   *classifier 
+      crossvalidation: *xvalid
+      classes: *classes
+
+    - eyefitting:   *eyefitting
+      features:      
+        - name:       SpatialHistogram
+          sz:         [8,8]
+
+        - name:       PCASK
+          n_components: 100
+      classifier:   *classifier 
+      crossvalidation: *xvalid
+      classes: *classes
+
+    - eyefitting:   *eyefitting
+      features:      
+        - name:       SpatialHistogram
+          sz:         [8,8]
+
+        - name:       PCASK
+          n_components: 125
+      classifier:   *classifier 
+      crossvalidation: *xvalid
+      classes: *classes
+
+    - eyefitting:   *eyefitting
+      features:      
+        - name:       SpatialHistogram
+          sz:         [8,8]
+
+        - name:       PCASK
+          n_components: 150
+      classifier:   *classifier 
+      crossvalidation: *xvalid
+      classes: *classes
+
+    - eyefitting:   *eyefitting
+      features:      
+        - name:       SpatialHistogram
+          sz:         [8,8]
+
+        - name:       PCASK
+          n_components: 175
+      classifier:   *classifier 
+      crossvalidation: *xvalid
+      classes: *classes

@@ -4,8 +4,7 @@ import numpy as np
 from sklearn import metrics
 from sklearn.cross_validation import StratifiedShuffleSplit
 
-from loader import AvgFace
-import classifiers
+from loader import AvgFace, Face
 
 import argparse
 import yaml
@@ -18,20 +17,23 @@ from facerec.model import PredictableModel
 
 import logging as log
 
+from facerec.serialization import save_model, load_model
 
-#def gen_avg(exconf):
-    #af = AvgFace(exconf)
-    #size = af.exconf["eyefitting"]["size"]
-    #total = np.zeros((size[0],size[1],3))
+
+def gen_avg(exconf):
+    import cv2
+    af = AvgFace(exconf)
+    size = af.exconf["eyefitting"]["size"]
+    total = np.zeros((size[0],size[1],3))
     #total_score = 0
-    #n = len(af.faces)
-    #print("Total faces: ",n)
-    #for face in af.faces[:n]:
-        #fe = preproc(face.fit_eyes())
-        #total += fe
-        #cv2.imwrite("mapped/m_{}.jpg".format(face.image_id),fe)
-    #avg = total/n
-    #cv2.imwrite("avg.jpg",avg)
+    n = len(af.faces)
+    print("Total faces: ",n)
+    for face in af.faces[:n]:
+        fe = face.fit_eyes()
+        total += fe
+        cv2.imwrite("mapped/m_{}.jpg".format(face.image_id),fe)
+    avg = total/n
+    cv2.imwrite("avg.jpg",avg)
 
 
 # Resize, HistogramEqualization, TanTriggsPreprocessing, LBPPreprocessing,
@@ -43,26 +45,35 @@ from facerec import feature
 
 # NearestNeighbor, SVM
 from facerec import classifier
+from facerec.operators import CombineOperator
 
 class Experiment:
     def __init__(self,exconf):
         self.exconf = exconf
         # Confusion matrix queue
         self.cmq = mp.Queue()
+
     def get_model(self):
-        name = self.exconf["feature"]["name"]
-        options = self.exconf["feature"]
-        del options["name"]
-        feat = getattr(feature,name)(**options)
-        options["name"] = name
+        def get_feature(desc):
+            return getattr(feature, desc["name"])(
+                **{k: desc[k] for k in desc if k != "name"})
 
-        name = self.exconf["classifier"]["name"]
-        options = self.exconf["classifier"]
-        del options["name"]
-        clf = getattr(classifier,name)(**options)
-        options["name"] = name
+        feat = None
+        if "features" in self.exconf:
+            features = self.exconf["features"]
+            assert len(features) == 2
 
-        log.debug(name + " " + str(options))
+            feat = CombineOperator(get_feature(features[0]),
+                                   get_feature(features[1]))
+
+        elif "feature" in self.exconf:
+            feat = get_feature(self.exconf["feature"])
+
+        options_clf = self.exconf["classifier"]
+        clf = getattr(classifier, options_clf["name"])(
+            **{k: options_clf[k] for k in options_clf if k != "name"})
+
+        log.debug("Feature: {}, Classifier: {}".format(feat,clf))
 
         return PredictableModel(feature=feat, classifier=clf)
 
@@ -73,13 +84,13 @@ class Experiment:
         xv.cmq = self.cmq
         xv.model = self.get_model()
 
-        name = self.exconf["preprocessing"]["name"]
-        options = self.exconf["preprocessing"]
-        del options["name"]
-        preproc = getattr(preprocessing,name)(**options)
-        options["name"] = name
+        if "preprocessing" in self.exconf:
+            options = self.exconf["preprocessing"]
+            preproc = getattr(preprocessing,options["name"])(
+                **{k:options[k] for k in options if k != "name"})
 
-        xv.preproc = preproc
+            xv.preproc = preproc
+
         return xv
     def report(self):
         y_test_total = []
@@ -94,7 +105,12 @@ class Experiment:
 
         def city_fmt(city):
             return "".join([l for l in city if l.isupper()])
-        labels = [["M","F"][c["gender"]]+c["country"]+city_fmt(c["city"]) for c in self.exconf["classes"]]
+
+        def get_label(c):
+            g = -1 if "gender" not in c else c["gender"]
+            return ["M", "F", "A"][g]+c["country"]+city_fmt(c["city"])
+
+        labels = [get_label(c) for c in self.exconf["classes"]]
 
         cm = metrics.confusion_matrix(y_test_total,y_pred_total)
         np.set_printoptions(precision=2)
@@ -112,6 +128,7 @@ class Experiment:
 
         self.af = AvgFace(self.exconf)
         self.y = np.array([int(face.c) for face in self.af.faces])
+
         assert len(np.unique(self.y)) >= 2
 
         end_time = time.time()
@@ -154,7 +171,26 @@ def action_xvalid(conf):
         ex.run()
 
 def action_avg(conf):
-    pass
+    gen_avg(conf)
+
+def action_train(conf):
+    ex = Experiment(conf)
+    ex.af = AvgFace(conf)
+    y = np.array([int(face.c) for face in ex.af.faces])
+
+    X = ignore_broken(ex.af.faces)
+    y = y[np.array([not face.broken for face in ex.af.faces])]
+
+    ex.model = ex.get_model()
+    ex.model.compute(X, y)
+    save_model("model.pkl", ex.model)
+
+def action_classify(exconf,ipath):
+    model = load_model("model.pkl")
+    f = Face(path=ipath,exconf=exconf)
+    pp = model.predict(f.fit_eyes())
+    print(pp)
+
 
 
 def mem(pid):
@@ -162,6 +198,18 @@ def mem(pid):
     process = psutil.Process(pid)
     mem = process.get_memory_info()[0] / float(2 ** 20)
     return mem
+
+def ignore_broken(faces):
+    nfaces = []
+    for face in faces:
+        fitted = face.fit_eyes()
+        if fitted is not None:
+            #if hasattr(self,"preproc"):
+                #fitted = self.preproc.extract(fitted)
+            nfaces.append(fitted)
+        else:
+            face.broken = True
+    return np.array(nfaces)
 
 class XValidator(mp.Process):
     """Parallel validator"""
@@ -171,15 +219,6 @@ class XValidator(mp.Process):
         pid = os.getpid()
         log.debug("[{}] - started with {:.2f}MB ({}/{} samples)".format(pid,mem(os.getpid()),len(self.y_train),len(self.y_test)))
 
-        def ignore_broken(faces):
-            nfaces = []
-            for face in faces:
-                fitted = face.fit_eyes()
-                if fitted is not None:
-                    nfaces.append(fitted)
-                else:
-                    face.broken = True
-            return np.array(nfaces)
         self.X_train = ignore_broken(self.faces_train)
         self.X_test = ignore_broken(self.faces_test)
         self.y_train = self.y_train[np.array([not face.broken for face in self.faces_train])]
@@ -210,7 +249,8 @@ class XValidator(mp.Process):
 def main():
     parser = argparse.ArgumentParser(description="Analysis")
     parser.add_argument("--config",type=str,metavar="EXCONF",required=True,help="YAML configuration")
-    parser.add_argument("action",choices=["xvalid","avg"],help="Action to perform")
+    parser.add_argument("--image",type=str,metavar="IMG",help="Image path")
+    parser.add_argument("action",choices=["xvalid", "avg", "train", "classify"],help="Action to perform")
     args = parser.parse_args()
     conf = yaml.load(open(args.config))
 
@@ -223,7 +263,11 @@ def main():
     if args.action == "xvalid":
         action_xvalid(conf)
     elif args.action == "avg":
-        action_avg(conf)
+        action_avg(conf["exs"][0])
+    elif args.action == "train":
+        action_train(conf["exs"][0])
+    elif args.action == "classify":
+        action_classify(conf["exs"][0],args.image)
     else:
         print("Unknown action")
     w_end = time.time()

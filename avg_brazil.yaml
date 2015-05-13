@@ -4,7 +4,7 @@ logger:   &logger
 exs:
     # FIndiaM vs FBrazilBH - no preproc
     - eyefitting:   &eyefitting
-        size:       [128,128]
+        size:       [400,400]
       feature:      
         name:       &feature SpatialHistogram
         sz:         [4,4]
@@ -19,20 +19,8 @@ exs:
         vgsize:     3
 
       classes: &classes
-        - city:     Mumbai
-          country:  India
-          id:       0
-          gender:   0
-          n:        500
-
         - city:     Belo Horizonte
           country:  Brazil
           id:       1
           gender:   0
-          n:        500
-
-        - city:     Guadalajara
-          country:  Mexico
-          id:       2
-          gender:   0
-          n:        500
+          n:        250

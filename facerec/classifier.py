@@ -28,10 +28,15 @@ class SVMSK(AbstractClassifier):
             self.clf = SVC(C=C)
 
     def compute(self,X,y):
+        if type(X) is not np.ndarray:
+            X = np.array(X)
+            if X.ndim == 3:
+                X = X.reshape((X.shape[0],X.shape[1]*X.shape[2]))
         self.clf.fit(X,y)
 
 
     def predict(self,X):
+        X = np.ravel(X)
         return self.clf.predict([X])
 
     def update(self,X,y):

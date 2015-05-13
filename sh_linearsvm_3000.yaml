@@ -1,13 +1,13 @@
 logger:   &logger
-    file:       sh_linearsvmC06_3class128m.results
+    file:       sh_linearsvmC06_3class64f_3000.results
     level:      info
 exs:
     # FIndiaM vs FBrazilBH - no preproc
     - eyefitting:   &eyefitting
-        size:       [128,128]
+        size:       [64,64]
       feature:      
         name:       &feature SpatialHistogram
-        sz:         [4,4]
+        sz:         [8,8]
       classifier:   &classifier 
         name:       SVMSK
         kernel:     linear
@@ -23,16 +23,16 @@ exs:
           country:  India
           id:       0
           gender:   0
-          n:        500
+          n:        2000
 
         - city:     Belo Horizonte
           country:  Brazil
           id:       1
           gender:   0
-          n:        500
+          n:        2000
 
         - city:     Guadalajara
           country:  Mexico
           id:       2
           gender:   0
-          n:        500
+          n:        2000

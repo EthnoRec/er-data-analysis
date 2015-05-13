@@ -1,0 +1,304 @@
+# C - [0.5,0.55,0.6,0.65,0.7,0.75,0.8]
+# size - [64,96,128,192]
+logger:   &logger
+    file:       sh_linearsvm_C_SIZE_M.results
+    level:      info
+exs:
+    # FIndiaM vs FBrazilBH - no preproc
+    - eyefitting:   &eyefitting64
+        size:       [64,64]
+      feature:      &feature 
+        name:       SpatialHistogram
+        sz:         [4,4]
+      classifier:   &classifier 
+        name:       SVMSK
+        kernel:     linear
+        C:          0.5
+
+      crossvalidation: &xvalid
+        k:          6
+        test_size:  0.2
+        vgsize:     3
+
+      classes: &classes
+        - city:     Mumbai
+          country:  India
+          id:       0
+          gender:   0
+          n:        500
+
+        - city:     Belo Horizonte
+          country:  Brazil
+          id:       1
+          gender:   0
+          n:        500
+
+        - city:     Guadalajara
+          country:  Mexico
+          id:       2
+          gender:   0
+          n:        500
+
+    - eyefitting:   *eyefitting64
+      feature:      *feature
+      classifier:   
+        name:       SVMSK
+        kernel:     linear
+        C:          0.55
+      crossvalidation: *xvalid
+      classes: *classes
+
+    - eyefitting:   *eyefitting64
+      feature:      *feature
+      classifier:   
+        name:       SVMSK
+        kernel:     linear
+        C:          0.6
+      crossvalidation: *xvalid
+      classes: *classes
+
+    - eyefitting:   *eyefitting64
+      feature:      *feature
+      classifier:   
+        name:       SVMSK
+        kernel:     linear
+        C:          0.65
+      crossvalidation: *xvalid
+      classes: *classes
+
+    - eyefitting:   *eyefitting64
+      feature:      *feature
+      classifier:   
+        name:       SVMSK
+        kernel:     linear
+        C:          0.7
+      crossvalidation: *xvalid
+      classes: *classes
+
+    - eyefitting:   *eyefitting64
+      feature:      *feature
+      classifier:   
+        name:       SVMSK
+        kernel:     linear
+        C:          0.75
+      crossvalidation: *xvalid
+      classes: *classes
+
+    - eyefitting:   *eyefitting64
+      feature:      *feature
+      classifier:   
+        name:       SVMSK
+        kernel:     linear
+        C:          0.8
+      crossvalidation: *xvalid
+      classes: *classes
+
+
+
+    # 96
+    - eyefitting:   &eyefitting96
+        size:       [96,96]
+      feature:      *feature
+      classifier:   
+        name:       SVMSK
+        kernel:     linear
+        C:          0.55
+      crossvalidation: *xvalid
+      classes: *classes
+
+    - eyefitting:   *eyefitting96
+      feature:      *feature
+      classifier:   
+        name:       SVMSK
+        kernel:     linear
+        C:          0.55
+      crossvalidation: *xvalid
+      classes: *classes
+
+    - eyefitting:   *eyefitting96
+      feature:      *feature
+      classifier:   
+        name:       SVMSK
+        kernel:     linear
+        C:          0.6
+      crossvalidation: *xvalid
+      classes: *classes
+
+    - eyefitting:   *eyefitting96
+      feature:      *feature
+      classifier:   
+        name:       SVMSK
+        kernel:     linear
+        C:          0.65
+      crossvalidation: *xvalid
+      classes: *classes
+
+    - eyefitting:   *eyefitting96
+      feature:      *feature
+      classifier:   
+        name:       SVMSK
+        kernel:     linear
+        C:          0.7
+      crossvalidation: *xvalid
+      classes: *classes
+
+    - eyefitting:   *eyefitting96
+      feature:      *feature
+      classifier:   
+        name:       SVMSK
+        kernel:     linear
+        C:          0.75
+      crossvalidation: *xvalid
+      classes: *classes
+
+    - eyefitting:   *eyefitting96
+      feature:      *feature
+      classifier:   
+        name:       SVMSK
+        kernel:     linear
+        C:          0.8
+      crossvalidation: *xvalid
+      classes: *classes
+
+
+
+
+
+
+
+    # 128
+    - eyefitting:   &eyefitting128
+        size:       [128,128]
+      feature:      *feature
+      classifier:   
+        name:       SVMSK
+        kernel:     linear
+        C:          0.55
+      crossvalidation: *xvalid
+      classes: *classes
+
+    - eyefitting:   *eyefitting128
+      feature:      *feature
+      classifier:   
+        name:       SVMSK
+        kernel:     linear
+        C:          0.55
+      crossvalidation: *xvalid
+      classes: *classes
+
+    - eyefitting:   *eyefitting128
+      feature:      *feature
+      classifier:   
+        name:       SVMSK
+        kernel:     linear
+        C:          0.6
+      crossvalidation: *xvalid
+      classes: *classes
+
+    - eyefitting:   *eyefitting128
+      feature:      *feature
+      classifier:   
+        name:       SVMSK
+        kernel:     linear
+        C:          0.65
+      crossvalidation: *xvalid
+      classes: *classes
+
+    - eyefitting:   *eyefitting128
+      feature:      *feature
+      classifier:   
+        name:       SVMSK
+        kernel:     linear
+        C:          0.7
+      crossvalidation: *xvalid
+      classes: *classes
+
+    - eyefitting:   *eyefitting128
+      feature:      *feature
+      classifier:   
+        name:       SVMSK
+        kernel:     linear
+        C:          0.75
+      crossvalidation: *xvalid
+      classes: *classes
+
+    - eyefitting:   *eyefitting128
+      feature:      *feature
+      classifier:   
+        name:       SVMSK
+        kernel:     linear
+        C:          0.8
+      crossvalidation: *xvalid
+      classes: *classes
+
+
+
+
+
+
+    # 192
+    - eyefitting:   &eyefitting192
+        size:       [192,192]
+      feature:      *feature
+      classifier:   
+        name:       SVMSK
+        kernel:     linear
+        C:          0.55
+      crossvalidation: *xvalid
+      classes: *classes
+
+    - eyefitting:   *eyefitting192
+      feature:      *feature
+      classifier:   
+        name:       SVMSK
+        kernel:     linear
+        C:          0.55
+      crossvalidation: *xvalid
+      classes: *classes
+
+    - eyefitting:   *eyefitting192
+      feature:      *feature
+      classifier:   
+        name:       SVMSK
+        kernel:     linear
+        C:          0.6
+      crossvalidation: *xvalid
+      classes: *classes
+
+    - eyefitting:   *eyefitting192
+      feature:      *feature
+      classifier:   
+        name:       SVMSK
+        kernel:     linear
+        C:          0.65
+      crossvalidation: *xvalid
+      classes: *classes
+
+    - eyefitting:   *eyefitting192
+      feature:      *feature
+      classifier:   
+        name:       SVMSK
+        kernel:     linear
+        C:          0.7
+      crossvalidation: *xvalid
+      classes: *classes
+
+    - eyefitting:   *eyefitting192
+      feature:      *feature
+      classifier:   
+        name:       SVMSK
+        kernel:     linear
+        C:          0.75
+      crossvalidation: *xvalid
+      classes: *classes
+
+    - eyefitting:   *eyefitting192
+      feature:      *feature
+      classifier:   
+        name:       SVMSK
+        kernel:     linear
+        C:          0.8
+      crossvalidation: *xvalid
+      classes: *classes
+
+

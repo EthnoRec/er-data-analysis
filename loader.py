@@ -9,7 +9,6 @@ import psycopg2
 import psycopg2.extras
 import time
 
-from skimage.color import rgb2gray
 from skimage.exposure import adjust_gamma, adjust_log
 from skimage.exposure import rescale_intensity
 from skimage.filters import gaussian_filter
@@ -21,17 +20,24 @@ class Face:
         for key in kwargs:
             setattr(self,key,kwargs[key])
         self.broken = False
-        self.filename = self.image_id + ".jpg"
-        self.path = os.path.join(config["images"],self.filename)
-        url_params = config["imgsrv"]
-        url_params["filename"] = self.filename
-        self.url = "http://{host}:{port}/{filename}".format(**url_params)
+        if "parent" in kwargs:
+            self.exconf = self.parent.exconf
+        assert hasattr(self,"exconf")
+
+        if "image_id" in kwargs:
+            self.filename = self.image_id + ".jpg"
+            self.path = os.path.join(config["images"],self.filename)
+
+            url_params = config["imgsrv"]
+            url_params["filename"] = self.filename
+            self.url = "http://{host}:{port}/{filename}".format(**url_params)
 
     def crop_face(self,m):
         self.origin = self.bound[0]
         self.eye_left -= self.origin
         self.eye_right -= self.origin
         return m[self.bound[0][1]:self.bound[1][1],self.bound[0][0]:self.bound[1][0]]
+
     def download(self):
         r = requests.get(self.url)
         try:
@@ -56,24 +62,24 @@ class Face:
 
         #def dog_filter(face,s1=1,s2=2):
             #return gaussian_filter(face,s1) - gaussian_filter(face,s2)
-        if "preprocessing" not in self.parent.exconf:
-            return face
+        #if "preprocessing" not in self.parent.exconf:
+            #return face
 
-        ppconf = self.parent.exconf["preprocessing"]
+        #ppconf = self.parent.exconf["preprocessing"]
 
-        if "contrast_stretching" in ppconf:
-            pr = tuple(ppconf["contrast_stretching"]["percentiles"])
-            face = contrast_stretching(face,pr)
+        #if "contrast_stretching" in ppconf:
+            #pr = tuple(ppconf["contrast_stretching"]["percentiles"])
+            #face = contrast_stretching(face,pr)
 
-        
+
         return face
     def fit_eyes(self):
         def midpoint(a,b):
             return np.mean([a,b],axis=0)
         def vector_cos(a,b):
-            return np.dot(a,b)/(0.001+np.linalg.norm(a+0.01)*np.linalg.norm(b+0.01))
+            return np.dot(a,b)/(0.001+np.linalg.norm(a+0.001)*np.linalg.norm(b+0.001))
 
-        size = tuple(self.parent.exconf["eyefitting"]["size"])
+        size = tuple(self.exconf["eyefitting"]["size"])
         avg_eye_left = np.array([size[0]/2 - size[0]/5,size[1]*0.3])
         avg_eye_right = np.array([size[0]/2 + size[0]/5,size[1]*0.3])
 
@@ -92,8 +98,8 @@ class Face:
         M[:,2] += midpoint(avg_eye_left,avg_eye_right) - midpoint(self.eye_left,self.eye_right)
 
         m2 = cv2.warpAffine(m,M,size)
-        m3 = self.preproc(m2)
-        return m3
+        #m3 = self.preproc(m2)
+        return m2
 
 class AvgFace:
     def __init__(self,exconf):
@@ -109,7 +115,7 @@ class AvgFace:
             class_query = """
                     (SELECT *,{id:d} as class FROM detection_eyes
                     JOIN \"People\" AS p ON p._id = person_id
-                    JOIN \"Locations\" AS ls ON ls.lat = p.origin_lat AND ls.long = p.origin_long 
+                    JOIN \"Locations\" AS ls ON ls.lat = p.origin_lat AND ls.long = p.origin_long
                     WHERE {wheres}
                     ORDER BY score DESC LIMIT {n:d})
                     """.format(wheres=wheres,n=class_["n"],id=class_["id"])

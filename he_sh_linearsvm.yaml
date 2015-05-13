@@ -1,5 +1,5 @@
 logger:   &logger
-    file:       sh_linearsvm_1000and1000.results
+    file:       he_sh_linearsvm.results
     level:      info
 exs:
     # FIndiaM vs FBrazilBH - no preproc
