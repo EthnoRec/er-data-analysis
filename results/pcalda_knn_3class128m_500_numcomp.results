@@ -1,0 +1,55 @@
+INFO:root:**********Experiment**********
+INFO:root:Confusion matrix, without normalization
+[[282  89 229]
+ [288  95 217]
+ [266  88 246]]
+INFO:root:Normalized confusion matrix
+[[ 0.47  0.15  0.38]
+ [ 0.48  0.16  0.36]
+ [ 0.44  0.15  0.41]]
+INFO:root:Report
+             precision    recall  f1-score   support
+
+    MIndiaM       0.34      0.47      0.39       600
+  MBrazilBH       0.35      0.16      0.22       600
+   MMexicoG       0.36      0.41      0.38       600
+
+avg / total       0.35      0.35      0.33      1800
+
+INFO:root:**********Experiment**********
+INFO:root:Confusion matrix, without normalization
+[[282  89 229]
+ [288  95 217]
+ [266  88 246]]
+INFO:root:Normalized confusion matrix
+[[ 0.47  0.15  0.38]
+ [ 0.48  0.16  0.36]
+ [ 0.44  0.15  0.41]]
+INFO:root:Report
+             precision    recall  f1-score   support
+
+    MIndiaM       0.34      0.47      0.39       600
+  MBrazilBH       0.35      0.16      0.22       600
+   MMexicoG       0.36      0.41      0.38       600
+
+avg / total       0.35      0.35      0.33      1800
+
+INFO:root:**********Experiment**********
+INFO:root:Confusion matrix, without normalization
+[[282  89 229]
+ [288  95 217]
+ [266  88 246]]
+INFO:root:Normalized confusion matrix
+[[ 0.47  0.15  0.38]
+ [ 0.48  0.16  0.36]
+ [ 0.44  0.15  0.41]]
+INFO:root:Report
+             precision    recall  f1-score   support
+
+    MIndiaM       0.34      0.47      0.39       600
+  MBrazilBH       0.35      0.16      0.22       600
+   MMexicoG       0.36      0.41      0.38       600
+
+avg / total       0.35      0.35      0.33      1800
+
+INFO:root:[an] - total 3048.59s

@@ -1,0 +1,16 @@
+INFO:root:**********Experiment**********
+INFO:root:Confusion matrix, without normalization
+[[128  52]
+ [ 42 138]]
+INFO:root:Normalized confusion matrix
+[[ 0.71  0.29]
+ [ 0.23  0.77]]
+INFO:root:Report
+             precision    recall  f1-score   support
+
+    FIndiaM       0.75      0.71      0.73       180
+  FBrazilBH       0.73      0.77      0.75       180
+
+avg / total       0.74      0.74      0.74       360
+
+INFO:root:[an] - total 6.38s

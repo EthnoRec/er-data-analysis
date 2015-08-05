@@ -1,0 +1,54 @@
+logger:   &logger
+    file:       pcalda_knn_3class128m_500_numcomp.results
+    level:      info
+exs:
+    # FIndiaM vs FBrazilBH - no preproc
+    - eyefitting:   &eyefitting
+        size:       [128,128]
+      feature:      
+        name:               &feature Fisherfaces
+        num_components:     128
+
+      classifier:   &classifier 
+        name:       NearestNeighbor
+        k:          5
+
+      crossvalidation: &xvalid
+        k:          6
+        test_size:  0.2
+        vgsize:     3
+
+      classes: &classes
+        - city:     Mumbai
+          country:  India
+          id:       0
+          gender:   0
+          n:        500
+
+        - city:     Belo Horizonte
+          country:  Brazil
+          id:       1
+          gender:   0
+          n:        500
+
+        - city:     Guadalajara
+          country:  Mexico
+          id:       2
+          gender:   0
+          n:        500
+
+    - eyefitting:   *eyefitting
+      feature:      
+        name:       *feature
+        num_components:    256
+      classifier:   *classifier 
+      crossvalidation: *xvalid
+      classes: *classes
+
+    - eyefitting:   *eyefitting
+      feature:      
+        name:       *feature
+        num_components:    512
+      classifier:   *classifier 
+      crossvalidation: *xvalid
+      classes: *classes

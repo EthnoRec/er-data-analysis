@@ -1,5 +1,5 @@
 logger:   &logger
-    file:       sh_linearsvmC06_3class128m.results
+    file:       sh_linearsvmC1_3class128m_component6_2.results
     level:      info
 exs:
     # FIndiaM vs FBrazilBH - no preproc
@@ -11,7 +11,7 @@ exs:
       classifier:   &classifier 
         name:       SVMSK
         kernel:     linear
-        C:          0.6
+        C:          1
 
       crossvalidation: &xvalid
         k:          6
@@ -23,16 +23,16 @@ exs:
           country:  India
           id:       0
           gender:   0
-          n:        500
+          n:        250
 
         - city:     Belo Horizonte
           country:  Brazil
           id:       1
           gender:   0
-          n:        500
+          n:        250
 
         - city:     Guadalajara
           country:  Mexico
           id:       2
           gender:   0
-          n:        500
+          n:        250

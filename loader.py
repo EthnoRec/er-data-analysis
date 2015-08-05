@@ -8,10 +8,12 @@ from PIL import Image
 import psycopg2
 import psycopg2.extras
 import time
+import logging as log
 
 from skimage.exposure import adjust_gamma, adjust_log
 from skimage.exposure import rescale_intensity
 from skimage.filters import gaussian_filter
+
 
 config = yaml.load(open(os.environ["FDCONFIG"]))
 
@@ -50,6 +52,7 @@ class Face:
         if not os.path.exists(self.path):
             self.download()
         m = cv2.imread(self.path, cv2.CV_LOAD_IMAGE_GRAYSCALE)
+        #m = cv2.imread(self.path)
         if m is None:
             return None
         m = self.crop_face(m)

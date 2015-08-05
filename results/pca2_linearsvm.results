@@ -1,0 +1,121 @@
+INFO:root:**********Experiment**********
+INFO:root:Confusion matrix, without normalization
+[[375 225]
+ [187 413]]
+INFO:root:Normalized confusion matrix
+[[ 0.62  0.38]
+ [ 0.31  0.69]]
+INFO:root:Report
+             precision    recall  f1-score   support
+
+    FIndiaM       0.67      0.62      0.65       600
+  FBrazilBH       0.65      0.69      0.67       600
+
+avg / total       0.66      0.66      0.66      1200
+
+INFO:root:**********Experiment**********
+INFO:root:Confusion matrix, without normalization
+[[382 218]
+ [191 409]]
+INFO:root:Normalized confusion matrix
+[[ 0.64  0.36]
+ [ 0.32  0.68]]
+INFO:root:Report
+             precision    recall  f1-score   support
+
+    FIndiaM       0.67      0.64      0.65       600
+  FBrazilBH       0.65      0.68      0.67       600
+
+avg / total       0.66      0.66      0.66      1200
+
+INFO:root:**********Experiment**********
+INFO:root:Confusion matrix, without normalization
+[[364 236]
+ [189 411]]
+INFO:root:Normalized confusion matrix
+[[ 0.61  0.39]
+ [ 0.32  0.69]]
+INFO:root:Report
+             precision    recall  f1-score   support
+
+    FIndiaM       0.66      0.61      0.63       600
+  FBrazilBH       0.64      0.69      0.66       600
+
+avg / total       0.65      0.65      0.65      1200
+
+INFO:root:**********Experiment**********
+INFO:root:Confusion matrix, without normalization
+[[377 223]
+ [192 408]]
+INFO:root:Normalized confusion matrix
+[[ 0.63  0.37]
+ [ 0.32  0.68]]
+INFO:root:Report
+             precision    recall  f1-score   support
+
+    FIndiaM       0.66      0.63      0.64       600
+  FBrazilBH       0.65      0.68      0.66       600
+
+avg / total       0.65      0.65      0.65      1200
+
+INFO:root:**********Experiment**********
+INFO:root:Confusion matrix, without normalization
+[[388 212]
+ [201 399]]
+INFO:root:Normalized confusion matrix
+[[ 0.65  0.35]
+ [ 0.34  0.67]]
+INFO:root:Report
+             precision    recall  f1-score   support
+
+    FIndiaM       0.66      0.65      0.65       600
+  FBrazilBH       0.65      0.67      0.66       600
+
+avg / total       0.66      0.66      0.66      1200
+
+INFO:root:**********Experiment**********
+INFO:root:Confusion matrix, without normalization
+[[383 217]
+ [202 398]]
+INFO:root:Normalized confusion matrix
+[[ 0.64  0.36]
+ [ 0.34  0.66]]
+INFO:root:Report
+             precision    recall  f1-score   support
+
+    FIndiaM       0.65      0.64      0.65       600
+  FBrazilBH       0.65      0.66      0.66       600
+
+avg / total       0.65      0.65      0.65      1200
+
+INFO:root:**********Experiment**********
+INFO:root:Confusion matrix, without normalization
+[[399 201]
+ [189 411]]
+INFO:root:Normalized confusion matrix
+[[ 0.67  0.34]
+ [ 0.32  0.69]]
+INFO:root:Report
+             precision    recall  f1-score   support
+
+    FIndiaM       0.68      0.67      0.67       600
+  FBrazilBH       0.67      0.69      0.68       600
+
+avg / total       0.68      0.68      0.67      1200
+
+INFO:root:**********Experiment**********
+INFO:root:Confusion matrix, without normalization
+[[387 213]
+ [186 414]]
+INFO:root:Normalized confusion matrix
+[[ 0.65  0.35]
+ [ 0.31  0.69]]
+INFO:root:Report
+             precision    recall  f1-score   support
+
+    FIndiaM       0.68      0.65      0.66       600
+  FBrazilBH       0.66      0.69      0.67       600
+
+avg / total       0.67      0.67      0.67      1200
+
+INFO:root:[an] - total 1743.96s

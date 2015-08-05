@@ -1,0 +1,26 @@
+logger:   &logger
+    file:       sh_linearsvmC06_3class128m.results
+    level:      info
+exs:
+    # FIndiaM vs FBrazilBH - no preproc
+    - eyefitting:   &eyefitting
+        size:       [200,200]
+      feature:      
+        name:       &feature SpatialHistogram
+        sz:         [4,4]
+      classifier:   &classifier 
+        name:       SVMSK
+        kernel:     linear
+        C:          0.6
+
+      crossvalidation: &xvalid
+        k:          6
+        test_size:  0.2
+        vgsize:     3
+
+      classes: &classes
+        - city:     Belo Horizonte
+          country:  Brazil
+          id:       1
+          gender:   1
+          n:        250

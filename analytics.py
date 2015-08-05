@@ -4,7 +4,7 @@ import numpy as np
 from sklearn import metrics
 from sklearn.cross_validation import StratifiedShuffleSplit
 
-from loader import AvgFace, Face
+from loader import AvgFace, Face, config
 
 import argparse
 import yaml
@@ -13,27 +13,32 @@ import time
 import os
 import psutil
 
+import psycopg2
+import psycopg2.extras
+
 from facerec.model import PredictableModel
 
 import logging as log
 
 from facerec.serialization import save_model, load_model
 
+import matplotlib.pyplot as plt
+
 
 def gen_avg(exconf):
     import cv2
     af = AvgFace(exconf)
     size = af.exconf["eyefitting"]["size"]
-    total = np.zeros((size[0],size[1],3))
-    #total_score = 0
+    total = np.zeros((size[0], size[1], 3))
+    # total_score = 0
     n = len(af.faces)
-    print("Total faces: ",n)
+    print("Total faces: ", n)
     for face in af.faces[:n]:
         fe = face.fit_eyes()
         total += fe
-        cv2.imwrite("mapped/m_{}.jpg".format(face.image_id),fe)
+        cv2.imwrite("mapped/m_{}.jpg".format(face.image_id), fe)
     avg = total/n
-    cv2.imwrite("avg.jpg",avg)
+    cv2.imwrite("avg.jpg", avg)
 
 
 # Resize, HistogramEqualization, TanTriggsPreprocessing, LBPPreprocessing,
@@ -47,8 +52,10 @@ from facerec import feature
 from facerec import classifier
 from facerec.operators import CombineOperator
 
+
 class Experiment:
-    def __init__(self,exconf):
+
+    def __init__(self, exconf):
         self.exconf = exconf
         # Confusion matrix queue
         self.cmq = mp.Queue()
@@ -73,25 +80,27 @@ class Experiment:
         clf = getattr(classifier, options_clf["name"])(
             **{k: options_clf[k] for k in options_clf if k != "name"})
 
-        log.debug("Feature: {}, Classifier: {}".format(feat,clf))
+        log.debug("Feature: {}, Classifier: {}".format(feat, clf))
 
         return PredictableModel(feature=feat, classifier=clf)
 
     def make_validator(self, train_index, test_index):
         xv = XValidator()
-        xv.faces_train, xv.y_train = self.af.faces[train_index], self.y[train_index]
+        xv.faces_train, xv.y_train = self.af.faces[
+            train_index], self.y[train_index]
         xv.faces_test, xv.y_test = self.af.faces[test_index], self.y[test_index]
         xv.cmq = self.cmq
         xv.model = self.get_model()
 
         if "preprocessing" in self.exconf:
             options = self.exconf["preprocessing"]
-            preproc = getattr(preprocessing,options["name"])(
-                **{k:options[k] for k in options if k != "name"})
+            preproc = getattr(preprocessing, options["name"])(
+                **{k: options[k] for k in options if k != "name"})
 
             xv.preproc = preproc
 
         return xv
+
     def report(self):
         y_test_total = []
         y_pred_total = []
@@ -112,7 +121,7 @@ class Experiment:
 
         labels = [get_label(c) for c in self.exconf["classes"]]
 
-        cm = metrics.confusion_matrix(y_test_total,y_pred_total)
+        cm = metrics.confusion_matrix(y_test_total, y_pred_total)
         np.set_printoptions(precision=2)
         log.info("{:*^30}".format("Experiment"))
         log.info("Confusion matrix, without normalization\n"+str(cm))
@@ -120,8 +129,10 @@ class Experiment:
         cm_normalized = cm.astype("float") / cm.sum(axis=1)[:, np.newaxis]
         log.info("Normalized confusion matrix\n"+str(cm_normalized))
 
-        log.info("Report\n"+str(metrics.classification_report(y_test_total,y_pred_total,target_names=labels)))
-
+        log.info(
+            "Report\n" +
+            str(metrics.classification_report(y_test_total, y_pred_total,
+                                              target_names=labels)))
 
     def run(self):
         start_time = time.time()
@@ -134,19 +145,24 @@ class Experiment:
         end_time = time.time()
         log.debug("AvgFace done in {:2f}s".format(end_time - start_time))
 
-
         xvconf = self.exconf["crossvalidation"]
 
-
-        skf = StratifiedShuffleSplit(self.y, xvconf["k"], test_size=xvconf["test_size"],random_state=0)
-        validators = [self.make_validator(train_index,test_index) for train_index, test_index in skf]
-
+        skf = StratifiedShuffleSplit(
+            self.y,
+            xvconf["k"],
+            test_size=xvconf["test_size"],
+            random_state=0)
+        validators = [
+            self.make_validator(
+                train_index,
+                test_index) for train_index,
+            test_index in skf]
 
         vgsize = xvconf["vgsize"]
-        assert xvconf["k"]%vgsize == 0
+        assert xvconf["k"] % vgsize == 0
         vgn = xvconf["k"]/vgsize
 
-        vgroups = np.array(validators).reshape((vgn,vgsize))
+        vgroups = np.array(validators).reshape((vgn, vgsize))
 
         mt = True
         if mt is True:
@@ -165,13 +181,15 @@ class Experiment:
 
 def action_xvalid(conf):
     exs = []
-    for i,exconf in enumerate(conf["exs"]):
+    for i, exconf in enumerate(conf["exs"]):
         ex = Experiment(exconf)
         exs.append(ex)
         ex.run()
 
+
 def action_avg(conf):
     gen_avg(conf)
+
 
 def action_train(conf):
     ex = Experiment(conf)
@@ -185,12 +203,21 @@ def action_train(conf):
     ex.model.compute(X, y)
     save_model("model.pkl", ex.model)
 
-def action_classify(exconf,ipath):
-    model = load_model("model.pkl")
-    f = Face(path=ipath,exconf=exconf)
-    pp = model.predict(f.fit_eyes())
-    print(pp)
 
+def action_classify(exconf, ipath, landmarksf):
+    landmarks = yaml.load(open(landmarksf))[0]
+    classes = exconf["classes"]
+
+    model = load_model("model.pkl")
+    f = Face(path=ipath, exconf=exconf)
+    f.bound = [landmarks["outer"]["origin"], landmarks["outer"]["extent"]]
+    f.eye_left = np.mean([landmarks["left_eye"]["origin"], landmarks["left_eye"]["extent"]], axis=0)
+    f.eye_right = np.mean([landmarks["right_eye"]["origin"], landmarks["right_eye"]["extent"]], axis=0)
+    predictions = model.predict(f.fit_eyes())
+
+    for prediction in predictions:
+        cl = classes[prediction]
+        print({key: cl[key] for key in ["country", "city"]})
 
 
 def mem(pid):
@@ -199,58 +226,101 @@ def mem(pid):
     mem = process.get_memory_info()[0] / float(2 ** 20)
     return mem
 
+
 def ignore_broken(faces):
     nfaces = []
     for face in faces:
         fitted = face.fit_eyes()
         if fitted is not None:
-            #if hasattr(self,"preproc"):
+            # if hasattr(self,"preproc"):
                 #fitted = self.preproc.extract(fitted)
             nfaces.append(fitted)
         else:
             face.broken = True
     return np.array(nfaces)
 
+
 class XValidator(mp.Process):
+
     """Parallel validator"""
+
     def __init__(self):
         mp.Process.__init__(self)
+
     def run(self):
         pid = os.getpid()
-        log.debug("[{}] - started with {:.2f}MB ({}/{} samples)".format(pid,mem(os.getpid()),len(self.y_train),len(self.y_test)))
+        log.debug(
+            "[{}] - started with {:.2f}MB ({}/{} samples)".format(pid,
+                                                                  mem(os.getpid()), len(self.y_train), len(self.y_test)))
 
         self.X_train = ignore_broken(self.faces_train)
         self.X_test = ignore_broken(self.faces_test)
-        self.y_train = self.y_train[np.array([not face.broken for face in self.faces_train])]
-        self.y_test = self.y_test[np.array([not face.broken for face in self.faces_test])]
+        self.y_train = self.y_train[np.array(
+            [not face.broken
+             for face in self.faces_train])]
+        self.y_test = self.y_test[np.array(
+            [not face.broken
+             for face in self.faces_test])]
 
         assert len(self.X_train) == len(self.y_train)
         assert len(self.X_test) == len(self.y_test)
-        log.debug("[{}] - fit eyes {:.2f}MB".format(pid,mem(os.getpid())))
-
+        log.debug("[{}] - fit eyes {:.2f}MB".format(pid, mem(os.getpid())))
 
         start_time = time.time()
 
-        self.model.compute(self.X_train,self.y_train)
-        log.debug("[{}] - fit CLF {:.2f}MB".format(pid,mem(os.getpid())))
+        self.model.compute(self.X_train, self.y_train)
+        log.debug("[{}] - fit CLF {:.2f}MB".format(pid, mem(os.getpid())))
 
         after_train_time = time.time()
 
-        y_pred = [ self.model.predict(x)[0] for x in self.X_test ]
+        y_pred = [self.model.predict(x)[0] for x in self.X_test]
 
         end_time = time.time()
 
-        log.debug("[{}] - trained in {:.2f}s, tested in {:.2f}s, total {:.2f}s"
-                .format(pid,after_train_time - start_time,end_time - after_train_time,end_time - start_time))
+        log.debug(
+            "[{}] - trained in {:.2f}s, tested in {:.2f}s, total {:.2f}s".
+            format(pid, after_train_time - start_time, end_time -
+                   after_train_time, end_time - start_time))
 
-        self.cmq.put((self.y_test,y_pred))
+        self.cmq.put((self.y_test, y_pred))
+
+def action_score_analysis():
+    query = """
+    SELECT score FROM \"FaceDetections\"
+    WHERE score IS NOT NULL AND component = 6
+    ORDER BY score
+    """
+    with psycopg2.connect(**config["database"]) as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
+            cur.execute(query)
+            scores = [r["score"] for r in cur.fetchall()]
+            plt.hist(scores, 50, facecolor="green", alpha=0.75)
+            plt.ylabel("Frequency")
+            plt.xlabel("Score")
+            plt.title("Distribution of face detection scores")
+            plt.savefig("scores_hist.pdf")
+            print("done")
 
 
 def main():
     parser = argparse.ArgumentParser(description="Analysis")
-    parser.add_argument("--config",type=str,metavar="EXCONF",required=True,help="YAML configuration")
-    parser.add_argument("--image",type=str,metavar="IMG",help="Image path")
-    parser.add_argument("action",choices=["xvalid", "avg", "train", "classify"],help="Action to perform")
+    parser.add_argument(
+        "--config",
+        type=str,
+        metavar="EXCONF",
+        required=True,
+        help="YAML configuration")
+    parser.add_argument("--image", type=str, metavar="IMG", help="Image path")
+    parser.add_argument("--landmarks", type=str, metavar="FD", help="Landmarks data")
+    parser.add_argument(
+        "action",
+        choices=[
+            "xvalid",
+            "avg",
+            "train",
+            "classify",
+            "score-analysis"],
+        help="Action to perform")
     args = parser.parse_args()
     conf = yaml.load(open(args.config))
 
@@ -258,7 +328,7 @@ def main():
         level = log.INFO
         if conf["logger"]["level"] == "info":
             level = log.INFO
-        log.basicConfig(filename=conf["logger"]["file"],level=level)
+        log.basicConfig(filename=conf["logger"]["file"], level=level)
     w_start = time.time()
     if args.action == "xvalid":
         action_xvalid(conf)
@@ -267,12 +337,14 @@ def main():
     elif args.action == "train":
         action_train(conf["exs"][0])
     elif args.action == "classify":
-        action_classify(conf["exs"][0],args.image)
+        action_classify(conf["exs"][0], args.image, args.landmarks)
+    elif args.action == "score-analysis":
+        action_score_analysis()
     else:
         print("Unknown action")
     w_end = time.time()
     log.info("[an] - total {:.2f}s"
-            .format(w_end - w_start))
+             .format(w_end - w_start))
 
 if __name__ == "__main__":
     main()

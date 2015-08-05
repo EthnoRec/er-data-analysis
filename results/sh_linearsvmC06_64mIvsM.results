@@ -1,0 +1,19 @@
+INFO:root:**********Experiment**********
+INFO:root:Confusion matrix, without normalization
+[[409 191]
+ [192 408]]
+INFO:root:Normalized confusion matrix
+[[ 0.68  0.32]
+ [ 0.32  0.68]]
+INFO:root:Report
+             precision    recall  f1-score   support
+
+    MIndiaM       0.68      0.68      0.68       600
+   MMexicoG       0.68      0.68      0.68       600
+
+avg / total       0.68      0.68      0.68      1200
+
+INFO:root:[an] - total 18.57s
+INFO:root:[an] - total 3.25s
+INFO:root:[an] - total 3.23s
+INFO:root:[an] - total 3.19s
