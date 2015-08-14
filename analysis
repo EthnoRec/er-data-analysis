@@ -54,7 +54,6 @@ from facerec.operators import CombineOperator
 
 
 class Experiment:
-
     def __init__(self, exconf):
         self.exconf = exconf
         # Confusion matrix queue
