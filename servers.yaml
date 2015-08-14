@@ -1,0 +1,13 @@
+master: &master_ip 192.168.0.2
+
+image:
+    host:       *master_ip
+    port:       58001
+    dir:        /app/images
+
+database:
+    host:       *master_ip 
+    dbname:     tinder_development
+    user:       tinder
+    port:       55432
+
