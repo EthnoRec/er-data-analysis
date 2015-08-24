@@ -1,5 +1,5 @@
 logger:   &logger
-    file:       sh_linearsvmC1_3class128f_500_2.results
+    file:       win8x8_m.results
     level:      info
 exs:
     # FIndiaM vs FBrazilBH - no preproc
@@ -7,7 +7,7 @@ exs:
         size:       [128,128]
       feature:      
         name:       &feature SpatialHistogram
-        sz:         [4,4]
+        sz:         [8,8]
       classifier:   &classifier 
         name:       SVMSK
         kernel:     linear
@@ -22,17 +22,17 @@ exs:
         - city:     Mumbai
           country:  India
           id:       0
-          gender:   1
+          gender:   0
           n:        500
 
         - city:     Belo Horizonte
           country:  Brazil
           id:       1
-          gender:   1
+          gender:   0
           n:        500
 
         - city:     Guadalajara
           country:  Mexico
           id:       2
-          gender:   1
+          gender:   0
           n:        500

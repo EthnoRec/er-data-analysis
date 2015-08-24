@@ -10,6 +10,7 @@ import psycopg2.extras
 #import time
 
 servers = yaml.load(open(os.environ["ER_SERVERS"]))
+config = servers
 
 
 class Face:

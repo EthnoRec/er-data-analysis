@@ -289,16 +289,64 @@ def action_score_analysis():
     WHERE score IS NOT NULL AND component = 6
     ORDER BY score
     """
+    def from_city(cur, city):
+        query = """
+        SELECT score FROM \"FaceDetections\" AS fd
+        JOIN \"Images\" AS img ON img._id = fd.image_id
+        JOIN \"People\" AS p ON p._id = img.person_id
+        JOIN \"Locations\" AS loc
+        ON loc.lat = p.origin_lat AND loc.long = p.origin_long
+
+        WHERE score IS NOT NULL AND component = 6 AND loc.city = '{}'
+        ORDER BY score
+        """.format(city)
+
+        cur.execute(query)
+        return [r["score"] for r in cur.fetchall()]
+
+    def plot_two(one, two, names=("one", "two"), colours=("red", "green"), hrange=None, combined=None):
+        n, bins, patches = plt.hist(one, 30, facecolor=colours[0], alpha=0.75, normed=True, range=hrange)
+        plt.hist(two, 30, facecolor=colours[1], alpha=0.75, normed=True, range=hrange)
+        plt.plot(bins, combined, "b--")
+
+        plt.ylabel("Normalised frequency")
+        plt.xlabel("Score")
+        plt.title("Face detection scores - {} vs {}".format(*names))
+        plt.savefig("scores_hist_{}_{}.pdf".format(*names))
+
     with psycopg2.connect(**config["database"]) as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
             cur.execute(query)
             scores = [r["score"] for r in cur.fetchall()]
-            plt.hist(scores, 50, facecolor="green", alpha=0.75)
+
+            scores_m = from_city(cur, "Mumbai")
+            scores_bh = from_city(cur, "Belo Horizonte")
+            scores_g = from_city(cur, "Guadalajara")
+
+            min_len = min(len(scores_bh), len(scores_g), len(scores_m))
+
+
+            scores_m = np.random.choice(scores_m, min_len, replace=False)
+            scores_bh = np.random.choice(scores_bh, min_len, replace=False)
+            scores_g = np.random.choice(scores_g, min_len, replace=False)
+
+            hmin = min([min(st) for st in [scores_m, scores_bh, scores_g]])
+            hmax = max([max(st) for st in [scores_m, scores_bh, scores_g]])
+            hrange = (hmin, hmax)
+
+
+            bins, edges = np.histogram(scores, bins=31, range=hrange, normed=True)
+
+            plot_two(scores_m, scores_bh, names=("Mumbai", "Belo Horizonte"), colours=("orange", "green"), hrange=hrange, combined=bins)
+            plot_two(scores_m, scores_bh, names=("Guadalajara", "Belo Horizonte"), colours=("red", "green"), hrange=hrange, combined=bins)
+            plot_two(scores_m, scores_bh, names=("Guadalajara", "Mumbai"), colours=("red", "orange"), hrange=hrange, combined=bins)
+
+            plt.hist(scores, 30, facecolor="blue", alpha=0.75, range=hrange)
+
             plt.ylabel("Frequency")
             plt.xlabel("Score")
             plt.title("Distribution of face detection scores")
             plt.savefig("scores_hist.pdf")
-            print("done")
 
 
 def main():
